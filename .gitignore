@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+
+# Build and caches
+dist/
+.vite/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Local databases and runtime state
+vyaparmitra.db
+*.sqlite
+*.sqlite3
+
+# Scratch & test directories
+scratch/
+
+# Environment and secrets
+.env
+*.env
+.env.*
+
+# OS files
+.DS_Store
+Thumbs.db
