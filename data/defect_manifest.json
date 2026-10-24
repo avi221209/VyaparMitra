@@ -1,0 +1,142 @@
+[
+  {
+    "defect_id": 1,
+    "type": "DUPLICATE_SKU",
+    "entity": "Product:SKU-P02-DUP",
+    "severity": "critical",
+    "description": "Duplicate SKU entity detected mirroring SKU-P02"
+  },
+  {
+    "defect_id": 2,
+    "type": "DUPLICATE_SKU",
+    "entity": "Product:SKU-P03-DUP",
+    "severity": "critical",
+    "description": "Duplicate SKU entity detected mirroring SKU-P03"
+  },
+  {
+    "defect_id": 3,
+    "type": "DUPLICATE_SKU",
+    "entity": "Product:SKU-P04-DUP",
+    "severity": "critical",
+    "description": "Duplicate SKU entity detected mirroring SKU-P04"
+  },
+  {
+    "defect_id": 4,
+    "type": "MIXED_UNITS",
+    "entity": "Product:SKU-P06",
+    "severity": "warning",
+    "description": "Product has unrecognized unit 'UNKNOWN_UNIT'"
+  },
+  {
+    "defect_id": 5,
+    "type": "MIXED_UNITS",
+    "entity": "Product:SKU-P07",
+    "severity": "critical",
+    "description": "Negative case_pack (-5) detected"
+  },
+  {
+    "defect_id": 6,
+    "type": "MIXED_UNITS",
+    "entity": "Product:SKU-P08",
+    "severity": "critical",
+    "description": "Zero case_pack causes division by zero in carton calculation"
+  },
+  {
+    "defect_id": 7,
+    "type": "NEGATIVE_STOCK",
+    "entity": "InventorySnapshot:D1:SKU-P01",
+    "severity": "critical",
+    "description": "Negative on_hand stock (-25 cartons) observed"
+  },
+  {
+    "defect_id": 8,
+    "type": "NEGATIVE_STOCK",
+    "entity": "InventorySnapshot:D1:SKU-P02",
+    "severity": "critical",
+    "description": "Negative on_hand stock (-35 cartons) observed"
+  },
+  {
+    "defect_id": 9,
+    "type": "NEGATIVE_STOCK",
+    "entity": "InventorySnapshot:D1:SKU-P03",
+    "severity": "critical",
+    "description": "Negative on_hand stock (-45 cartons) observed"
+  },
+  {
+    "defect_id": 10,
+    "type": "INVALID_DATE",
+    "entity": "Batch:B-W1-SKU-P01-01",
+    "severity": "critical",
+    "description": "Batch expiry date (2026-10-09) is in the past relative to run date 2026-10-24"
+  },
+  {
+    "defect_id": 11,
+    "type": "INVALID_DATE",
+    "entity": "Batch:B-W1-SKU-P01-02",
+    "severity": "critical",
+    "description": "Batch expiry date (2026-10-08) is in the past relative to run date 2026-10-24"
+  },
+  {
+    "defect_id": 12,
+    "type": "INVALID_DATE",
+    "entity": "Batch:B-W2-SKU-P01-01",
+    "severity": "critical",
+    "description": "Batch expiry date (2026-10-07) is in the past relative to run date 2026-10-24"
+  },
+  {
+    "defect_id": 13,
+    "type": "INVALID_DATE",
+    "entity": "Batch:B-W2-SKU-P01-02",
+    "severity": "critical",
+    "description": "Batch expiry date (2026-10-06) is in the past relative to run date 2026-10-24"
+  },
+  {
+    "defect_id": 14,
+    "type": "CONTRADICTORY_STOCK",
+    "entity": "InventorySnapshot:D1:SKU-P04",
+    "severity": "critical",
+    "description": "Contradictory stock: on_hand (10) is less than reserved (50)"
+  },
+  {
+    "defect_id": 15,
+    "type": "CONTRADICTORY_STOCK",
+    "entity": "InventorySnapshot:D1:SKU-P05",
+    "severity": "critical",
+    "description": "Contradictory stock: on_hand (10) is less than reserved (50)"
+  },
+  {
+    "defect_id": 16,
+    "type": "MISSING_SALES_DAYS",
+    "entity": "SalesSeries:D1:SKU-P01",
+    "severity": "warning",
+    "description": "Missing sales observation on 2026-08-06 (gap > 2 days in series). Series marked as insufficient data."
+  },
+  {
+    "defect_id": 17,
+    "type": "MISSING_SALES_DAYS",
+    "entity": "SalesSeries:D1:SKU-P01",
+    "severity": "warning",
+    "description": "Missing sales observation on 2026-08-07 (gap > 2 days in series). Series marked as insufficient data."
+  },
+  {
+    "defect_id": 18,
+    "type": "MISSING_SALES_DAYS",
+    "entity": "SalesSeries:D1:SKU-P01",
+    "severity": "warning",
+    "description": "Missing sales observation on 2026-08-08 (gap > 2 days in series). Series marked as insufficient data."
+  },
+  {
+    "defect_id": 19,
+    "type": "MISSING_SALES_DAYS",
+    "entity": "SalesSeries:D1:SKU-P01",
+    "severity": "warning",
+    "description": "Missing sales observation on 2026-08-09 (gap > 2 days in series). Series marked as insufficient data."
+  },
+  {
+    "defect_id": 20,
+    "type": "MISSING_SALES_DAYS",
+    "entity": "SalesSeries:D1:SKU-P01",
+    "severity": "warning",
+    "description": "Missing sales observation on 2026-08-10 (gap > 2 days in series). Series marked as insufficient data."
+  }
+]
