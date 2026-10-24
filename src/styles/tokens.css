@@ -1,0 +1,84 @@
+/* src/styles/tokens.css */
+/* VyaparMitra Design System Tokens */
+
+:root {
+  /* Surfaces & Paper */
+  --color-paper: #F5F6F4;
+  --color-surface: #FFFFFF;
+
+  /* Typography / Inks */
+  --color-ink: #16202A;
+  --color-ink-2: #4A5663;
+  --color-ink-3: #667381; /* Smallest metadata only on surface */
+
+  /* Structural Lines & Borders */
+  --color-line: #DDE2E7;
+  --color-line-strong: #7E8E9E; /* Refined from #C3CBD3 to ensure 3:1 WCAG AA border contrast */
+
+  /* Brand / Actions / Focus */
+  --color-brand: #0F5C4D;
+  --color-brand-wash: #E4F0EC;
+
+  /* Turmeric / Attention / Flags */
+  --color-turmeric: #B37400; /* Refined from #D99A1B to guarantee 3:1 border & stamp contrast */
+  --color-turmeric-wash: #FBF0D7;
+
+  /* Madder / Shortfalls / Errors */
+  --color-madder: #A3344F;
+  --color-madder-wash: #F7E4E9;
+
+  /* Status OK */
+  --color-ok: #2E7D4F;
+
+  /* Elevation (Overlays Only) */
+  --shadow-overlay: 0 12px 32px rgba(22, 32, 42, 0.14);
+
+  /* Radii */
+  --radius-chip: 2px;
+  --radius-control: 6px;
+  --radius-overlay: 12px;
+
+  /* Fonts */
+  --font-ui: 'Public Sans Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Source Serif 4 Variable', Georgia, 'Times New Roman', serif;
+}
+
+/* Base application styling */
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tabular figures on every number */
+.tabular-nums,
+[data-tabular-nums="true"],
+input[type="number"],
+.number-cell {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* Focus styles: visible 2px focus ring (offset 2px, brand) */
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

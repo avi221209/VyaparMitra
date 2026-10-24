@@ -1,0 +1,57 @@
+/* Import self-hosted fonts */
+@import '@fontsource-variable/public-sans';
+@import '@fontsource-variable/source-serif-4';
+
+/* Import design system tokens */
+@import './styles/tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+}
+
+@media print {
+  /* Hide non-printable navigation, header actions, and interactive elements */
+  aside,
+  header,
+  nav,
+  button,
+  input,
+  select,
+  .no-print {
+    display: none !important;
+  }
+
+  body, #root, main {
+    background: #ffffff !important;
+    color: #16202a !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  th, td {
+    border-bottom: 1px solid #7e8e9e !important;
+    color: #16202a !important;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+}
+
