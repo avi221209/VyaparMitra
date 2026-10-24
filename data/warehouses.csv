@@ -1,0 +1,5 @@
+id,code,name,city,state,zone,capacity_cartons,is_active,is_simulated
+WH-BHI-01,BHIWANDI,Bhiwandi Mother Logistics Hub,Bhiwandi,Maharashtra,West,50000,True,True
+WH-MAN-01,MANESAR,Manesar Central DC,Manesar,Haryana,North,45000,True,True
+WH-DAN-01,DANKUNI,Dankuni Regional DC,Dankuni,West Bengal,East,35000,True,True
+WH-NEL-01,NELAMANGALA,Nelamangala Gateway DC,Nelamangala,Karnataka,South,40000,True,True

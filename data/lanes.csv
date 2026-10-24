@@ -1,0 +1,9 @@
+id,source_id,destination_id,lead_time_days,cost_per_carton,capacity_load,distance_km,is_simulated
+LANE-W1-D1,W1,D1,3,50.0,,1500.0,True
+LANE-W1-D2,W1,D2,2,31.8,1593.0,850.0,True
+LANE-W1-S1,W1,S1,3,66.8,,2100.0,True
+LANE-W1-S2,W1,S2,2,47.2,,1400.0,True
+LANE-W2-D1,W2,D1,3,61.2,,1900.0,True
+LANE-W2-D2,W2,D2,1,22.56,,520.0,True
+LANE-W2-S1,W2,S1,2,36.0,,1000.0,True
+LANE-W2-S2,W2,S2,1,12.48,807.0,160.0,True

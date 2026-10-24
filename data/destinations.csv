@@ -1,0 +1,11 @@
+id,code,name,city,state,zone,tier,current_stock_cartons,in_transit_cartons,is_active,is_simulated
+DST-MUM-01,MUM_SOUTH,Mumbai South SuperStockist,Mumbai,Maharashtra,West,Tier-1,120,30,True,True
+DST-PUN-01,PUNE_DIST,Pune District Distributor,Pune,Maharashtra,West,Tier-1,85,20,True,True
+DST-AHM-01,AHM_AGENCY,Ahmedabad Wholesale Agency,Ahmedabad,Gujarat,West,Tier-2,60,15,True,True
+DST-DEL-01,DEL_NORTH,Delhi North FMCG Hub,Delhi,Delhi NCR,North,Tier-1,150,40,True,True
+DST-JAI-01,JAI_DEPOT,Jaipur Trade Depot,Jaipur,Rajasthan,North,Tier-2,70,20,True,True
+DST-LKO-01,LKO_COMM,Lucknow Commercial SuperStockist,Lucknow,Uttar Pradesh,North,Tier-2,55,10,True,True
+DST-BLR-01,BLR_URBAN,Bangalore Metro SuperStockist,Bangalore,Karnataka,South,Tier-1,140,35,True,True
+DST-CHN-01,CHN_CENTRAL,Chennai Central Distributor,Chennai,Tamil Nadu,South,Tier-1,110,25,True,True
+DST-KOL-01,KOL_CITY,Kolkata Metro Agency,Kolkata,West Bengal,East,Tier-1,95,25,True,True
+DST-PAT-01,PAT_TRADE,Patna Regional Trade Agency,Patna,Bihar,East,Tier-2,45,10,True,True
