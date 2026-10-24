@@ -129,6 +129,14 @@ export function PlanPage() {
     showDetails,
   ]);
 
+  // Sync URL search params back to state on browser navigation (back/forward/deep link)
+  useEffect(() => {
+    const currentLine = searchParams.get('line');
+    if (currentLine !== selectedLineId) {
+      setSelectedLineId(currentLine);
+    }
+  }, [searchParams]);
+
   const handleHorizonChange = (h: number) => {
     const valid = Math.max(1, Math.min(28, h));
     setHorizon(valid);

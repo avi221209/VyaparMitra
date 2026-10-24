@@ -74,6 +74,10 @@ export function DataPage() {
       queryClient.invalidateQueries({ queryKey: ['system-status'] });
       queryClient.invalidateQueries({ queryKey: ['validation-issues'] });
       queryClient.invalidateQueries({ queryKey: ['latest-plan'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['locations'] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['evaluation-data'] });
       window.dispatchEvent(new Event('role-changed'));
 
       const names: Record<string, string> = {
@@ -379,38 +383,54 @@ export function DataPage() {
         </p>
 
         {/* Template Links */}
-        <div className="flex flex-wrap items-center justify-center gap-4 text-meta text-ink-2 border-t border-line pt-3 w-full max-w-xl">
+        <div className="flex flex-wrap items-center justify-center gap-3 text-meta text-ink-2 border-t border-line pt-3 w-full max-w-2xl">
           <span className="text-ink-3">Templates:</span>
           <a
-            href="/data/products.csv"
+            href="/api/data/template/products"
             download="products_template.csv"
             className="hover:text-brand hover:underline"
           >
-            Products CSV
+            Products
           </a>
           <span className="text-line">|</span>
           <a
-            href="/data/locations.csv"
+            href="/api/data/template/locations"
             download="locations_template.csv"
             className="hover:text-brand hover:underline"
           >
-            Locations CSV
+            Locations
           </a>
           <span className="text-line">|</span>
           <a
-            href="/data/lanes.csv"
+            href="/api/data/template/lanes"
             download="lanes_template.csv"
             className="hover:text-brand hover:underline"
           >
-            Lanes CSV
+            Lanes
           </a>
           <span className="text-line">|</span>
           <a
-            href="/data/batches.csv"
+            href="/api/data/template/batches"
             download="batches_template.csv"
             className="hover:text-brand hover:underline"
           >
-            Batches CSV
+            Batches
+          </a>
+          <span className="text-line">|</span>
+          <a
+            href="/api/data/template/inventory_snapshots"
+            download="inventory_snapshots_template.csv"
+            className="hover:text-brand hover:underline"
+          >
+            Snapshots
+          </a>
+          <span className="text-line">|</span>
+          <a
+            href="/api/data/template/sales_daily"
+            download="sales_daily_template.csv"
+            className="hover:text-brand hover:underline"
+          >
+            Sales
           </a>
         </div>
       </section>

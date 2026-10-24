@@ -117,17 +117,34 @@ export function ReviewPage() {
 
   const lines = planData?.lines || [];
 
+  const isPending = (s?: string) => {
+    const val = (s || '').toLowerCase();
+    return val === 'proposed' || val === 'draft' || val === 'pending';
+  };
+  const isApproved = (s?: string) => {
+    const val = (s || '').toLowerCase();
+    return val === 'approved' || val === 'edited';
+  };
+  const isRejected = (s?: string) => (s || '').toLowerCase() === 'rejected';
+
   const filteredLines = useMemo(() => {
     return lines.filter((line: any) => {
-      const matchStatus = statusFilter === 'all' || line.status === statusFilter;
+      let matchStatus = true;
+      if (statusFilter === 'draft') {
+        matchStatus = isPending(line.status);
+      } else if (statusFilter === 'approved') {
+        matchStatus = isApproved(line.status);
+      } else if (statusFilter === 'rejected') {
+        matchStatus = isRejected(line.status);
+      }
       const matchDest = destinationFilter === 'all' || line.destination_id === destinationFilter;
       return matchStatus && matchDest;
     });
   }, [lines, statusFilter, destinationFilter]);
 
-  const pendingCount = lines.filter((l: any) => l.status === 'draft').length;
-  const approvedCount = lines.filter((l: any) => l.status === 'approved').length;
-  const rejectedCount = lines.filter((l: any) => l.status === 'rejected').length;
+  const pendingCount = lines.filter((l: any) => isPending(l.status)).length;
+  const approvedCount = lines.filter((l: any) => isApproved(l.status)).length;
+  const rejectedCount = lines.filter((l: any) => isRejected(l.status)).length;
 
   const columns = [
     {
@@ -164,14 +181,14 @@ export function ReviewPage() {
       render: (r: any) => (
         <Badge
           variant={
-            r.status === 'approved'
+            isApproved(r.status)
               ? 'ok'
-              : r.status === 'rejected'
+              : isRejected(r.status)
               ? 'madder'
               : 'neutral'
           }
         >
-          {r.status || 'draft'}
+          {r.status || 'PROPOSED'}
         </Badge>
       ),
     },
@@ -267,7 +284,7 @@ export function ReviewPage() {
                 disabled={!canModify || bulkApproveMutation.isPending}
                 loading={bulkApproveMutation.isPending}
                 onClick={() =>
-                  bulkApproveMutation.mutate(lines.filter((l: any) => l.status === 'draft'))
+                  bulkApproveMutation.mutate(lines.filter((l: any) => isPending(l.status)))
                 }
               >
                 Approve all pending ({pendingCount})

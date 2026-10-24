@@ -72,6 +72,38 @@ TEMPLATES: Dict[str, Dict[str, Any]] = {
 }
 
 
+ENTITY_ALIASES: Dict[str, str] = {
+    # Products
+    "product": "products",
+    "products": "products",
+    # Locations
+    "location": "locations",
+    "locations": "locations",
+    "warehouse": "locations",
+    "warehouses": "locations",
+    "destination": "locations",
+    "destinations": "locations",
+    # Lanes
+    "lane": "lanes",
+    "lanes": "lanes",
+    # Batches
+    "batch": "batches",
+    "batches": "batches",
+    "inventory_batch": "batches",
+    "inventory_batches": "batches",
+    # Inventory snapshots
+    "inventory": "inventory",
+    "inventory_snapshot": "inventory",
+    "inventory_snapshots": "inventory",
+    "snapshots": "inventory",
+    # Sales daily / sales history
+    "sales": "sales",
+    "sales_daily": "sales",
+    "sales_history": "sales",
+    "daily_sales": "sales",
+}
+
+
 def get_current_role(x_role: str = Header(default="planner")) -> str:
     valid_roles = {"planner", "warehouse", "reviewer", "system"}
     cleaned = x_role.lower().strip()
@@ -88,22 +120,24 @@ def get_current_role(x_role: str = Header(default="planner")) -> str:
 # -------------------------------------------------------------------
 @router.get("/template/{name}", response_class=PlainTextResponse)
 def get_csv_template(name: str):
-    """Download clean CSV template for a data entity."""
-    clean_name = name.lower().strip().replace(".csv", "")
-    if clean_name not in TEMPLATES:
+    """Download clean CSV template for a data entity with alias support."""
+    raw_name = name.lower().strip().replace(".csv", "")
+    canonical_name = ENTITY_ALIASES.get(raw_name)
+    if not canonical_name or canonical_name not in TEMPLATES:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Template '{name}' not found. Available templates: {sorted(list(TEMPLATES.keys()))}",
+            detail=f"Template '{name}' not found. Available entities: {sorted(list(TEMPLATES.keys()))} (Supported aliases: {sorted(list(ENTITY_ALIASES.keys()))})",
         )
 
-    meta = TEMPLATES[clean_name]
+    meta = TEMPLATES[canonical_name]
     header_line = ",".join(meta["columns"]) + "\n"
     content = header_line + meta["sample"]
 
+    filename = f"{raw_name}_template.csv"
     return PlainTextResponse(
         content=content,
         media_type="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="{clean_name}_template.csv"'},
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
@@ -126,29 +160,13 @@ async def upload_csv_file(
     filename = file.filename or ""
     inferred_name = (table_name or filename).lower().replace(".csv", "").strip()
 
-    # Map aliases (e.g. products.csv, inventory_snapshots.csv)
-    name_alias_map = {
-        "product": "products",
-        "products": "products",
-        "location": "locations",
-        "locations": "locations",
-        "warehouse": "locations",
-        "destination": "locations",
-        "sales": "sales",
-        "sales_daily": "sales",
-        "inventory": "inventory",
-        "inventory_snapshots": "inventory",
-        "batches": "batches",
-        "batch": "batches",
-        "lanes": "lanes",
-        "lane": "lanes",
-    }
-    canonical_name = name_alias_map.get(inferred_name)
+    # Map aliases (e.g. inventory_batches.csv -> batches, sales_history.csv -> sales)
+    canonical_name = ENTITY_ALIASES.get(inferred_name)
 
     if not canonical_name or canonical_name not in TEMPLATES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unrecognized entity/table '{inferred_name}'. Allowed: {sorted(list(TEMPLATES.keys()))}",
+            detail=f"Unrecognized entity/table '{inferred_name}'. Allowed: {sorted(list(TEMPLATES.keys()))} (Supported aliases: {sorted(list(ENTITY_ALIASES.keys()))})",
         )
 
     meta = TEMPLATES[canonical_name]

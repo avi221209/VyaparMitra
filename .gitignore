@@ -6,6 +6,7 @@ venv/
 # Build and caches
 dist/
 .vite/
+.vite-temp/
 __pycache__/
 *.py[cod]
 *$py.class
@@ -13,6 +14,7 @@ __pycache__/
 
 # Local databases and runtime state
 vyaparmitra.db
+*.db
 *.sqlite
 *.sqlite3
 
@@ -23,6 +25,7 @@ scratch/
 .env
 *.env
 .env.*
+.env.local
 
 # OS files
 .DS_Store

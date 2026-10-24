@@ -98,3 +98,21 @@ As mandated by Rule 7 ("Where the spec is ambiguous, choose the simplest interpr
 - **Accessible Border Contrast**: Adjusted `line-strong` token to `#7E8E9E` (3.36:1 on surface, 3.10:1 on paper) to rigorously satisfy WCAG 2.1 SC 1.4.11 Non-text Contrast (3:1 minimum).
 - **URL & Storage Synchronization**: Filters, sorting, horizon, line selection, and density preferences synchronize to URL query parameters and localStorage for deterministic bookmarking and shareable ledger states.
 - **Safe Actions & Undo**: Human approvals and rejections trigger an 8-second toast with an inline `Undo` action that calls the counter-endpoint and logs to `DecisionLog`.
+
+## 11. Canonical Data Manifests & Backward-Compatible Aliases
+- **Canonical Files in `data/`**:
+  - `locations.csv`: Combined warehouse and destination entities with `type` column (`warehouse`, `distributor`, `store`).
+  - `products.csv`: 24 SKUs across 5 FMCG categories with packaging, carton dimensions, and cost structures.
+  - `lanes.csv`: Transportation lane definitions connecting warehouses to destinations with lead times, costs, and capacities.
+  - `batches.csv`: Physical stock batches stored across warehouses.
+  - `inventory_snapshots.csv`: On-hand, reserved, and in-transit stock positions at destinations.
+  - `sales_daily.csv`: Daily historical demand series.
+  - `manifest.json`: Simulation generator parameters, record counts, and tight lane declarations.
+  - `defect_manifest.json`: Ground-truth injected defects used for validation benchmark recall audits.
+  - `evaluation_cache.json`: Precomputed 28-day walk-forward replay benchmark results across 5 seeds and 3 scenarios.
+  - `backup_demo_plan.json`: Instant zero-solver backup plan for unbreakable offline demonstration.
+- **Backward-Compatible Alias Resolution**:
+  - In `GET /api/data/template/{name}` and `POST /api/data/upload`, the backend maintains `ENTITY_ALIASES` mapping singular, legacy, or prototype entity names (`inventory_batches` -> `batches`, `warehouses` / `destinations` -> `locations`, `sales_history` -> `sales`) directly to their canonical schema.
+  - Redundant prototype CSV files (`warehouses.csv`, `destinations.csv`, `inventory_batches.csv`, `sales_history.csv`) are retired from git to eliminate schema ambiguity.
+- **Bi-directional URL Synchronization**:
+  - The planning workspace (`/plan?line=...`) supports bi-directional sync: state changes update URL parameters via replace, and direct navigation/deep-linking/back-forward updates component selection without reload.
