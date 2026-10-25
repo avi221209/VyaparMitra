@@ -42,7 +42,7 @@ def test_clean_file_produces_no_critical_issues(session: Session):
 
 
 def test_csv_template_endpoint(client: TestClient):
-    """Verify GET /api/data/template/{name} returns downloadable CSVs with required columns."""
+    """Verify GET /api/v1/data/template/{name} returns downloadable CSVs with required columns."""
     template_expected_cols = {
         "products": ["id", "name", "category", "unit", "case_pack", "load_per_carton", "unit_cost", "unit_margin", "min_remaining_shelf_days"],
         "locations": ["id", "name", "type", "city", "state"],
@@ -53,7 +53,7 @@ def test_csv_template_endpoint(client: TestClient):
     }
 
     for name, expected_cols in template_expected_cols.items():
-        res = client.get(f"/api/data/template/{name}")
+        res = client.get(f"/api/v1/data/template/{name}")
         assert res.status_code == 200
         assert res.headers["content-type"].startswith("text/csv")
         content = res.text
@@ -63,7 +63,7 @@ def test_csv_template_endpoint(client: TestClient):
             assert col in actual_cols
 
     # Unknown template should 404
-    bad_res = client.get("/api/data/template/nonexistent_table")
+    bad_res = client.get("/api/v1/data/template/nonexistent_table")
     assert bad_res.status_code == 404
 
 
@@ -78,7 +78,7 @@ def test_upload_csv_with_missing_columns_names_them(client: TestClient):
     files = {"file": ("products.csv", io.BytesIO(defective_csv.encode("utf-8")), "text/csv")}
     data = {"table_name": "products"}
 
-    res = client.post("/api/data/upload", files=files, data=data, headers={"X-Role": "planner"})
+    res = client.post("/api/v1/data/upload", files=files, data=data, headers={"X-Role": "planner"})
     assert res.status_code == 400
     err_detail = res.json()["detail"]
 
@@ -98,7 +98,7 @@ def test_upload_valid_csv_and_auto_validation(client: TestClient):
     files = {"file": ("products.csv", io.BytesIO(valid_csv.encode("utf-8")), "text/csv")}
     data = {"table_name": "products"}
 
-    res = client.post("/api/data/upload", files=files, data=data, headers={"X-Role": "planner"})
+    res = client.post("/api/v1/data/upload", files=files, data=data, headers={"X-Role": "planner"})
     assert res.status_code == 200
     res_data = res.json()
     assert res_data["status"] == "success"
@@ -107,11 +107,12 @@ def test_upload_valid_csv_and_auto_validation(client: TestClient):
 
 def test_fix_first_gate_and_resolution_endpoints(client: TestClient, session: Session):
     """Test Fix First gate, issue grouping by severity, and resolve/acknowledge endpoints."""
-    # Seed defect dataset to get issues
-    client.post("/api/data/seed?variant=defects&seed=1&scenario=balanced", headers={"X-Role": "planner"})
+    # Seed defect dataset directly to get issues
+    sim = FMCGSimulator(seed=1, variant="defects", scenario="balanced")
+    sim.seed_database(session)
 
-    # 1. GET /api/data/issues
-    issues_res = client.get("/api/data/issues")
+    # 1. GET /api/v1/data/issues
+    issues_res = client.get("/api/v1/data/issues")
     assert issues_res.status_code == 200
     summary = issues_res.json()
     assert summary["critical_count"] > 0
@@ -120,7 +121,7 @@ def test_fix_first_gate_and_resolution_endpoints(client: TestClient, session: Se
     assert "warning" in summary["by_severity"]
 
     # 2. Blocked planning entities
-    blocked_res = client.get("/api/data/blocked-planning-entities")
+    blocked_res = client.get("/api/v1/data/blocked-planning-entities")
     assert blocked_res.status_code == 200
     blocked_data = blocked_res.json()
     assert blocked_data["blocked_entities_count"] > 0
@@ -134,7 +135,7 @@ def test_fix_first_gate_and_resolution_endpoints(client: TestClient, session: Se
     issue_id = target_issue["id"]
 
     resolve_res = client.post(
-        f"/api/data/issues/{issue_id}/resolve",
+        f"/api/v1/data/issues/{issue_id}/resolve",
         data={"note": "Correction verified"},
         headers={"X-Role": "reviewer"},
     )
@@ -145,7 +146,7 @@ def test_fix_first_gate_and_resolution_endpoints(client: TestClient, session: Se
     # 4. Acknowledge another issue
     target_ack = open_critical_issues[1]
     ack_res = client.post(
-        f"/api/data/issues/{target_ack['id']}/acknowledge",
+        f"/api/v1/data/issues/{target_ack['id']}/acknowledge",
         data={"note": "Excluded from planning by reviewer"},
         headers={"X-Role": "reviewer"},
     )

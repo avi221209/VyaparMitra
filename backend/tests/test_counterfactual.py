@@ -1,6 +1,6 @@
 """
 Unit and Integration Tests for Counterfactual What-If Explanation Engine
-Team Stark | Triwizathon 2026 | PS2: Distribution Intelligence and Inventory Optimization Engine
+Distribution Planning and Inventory Optimization Engine
 """
 
 from datetime import date as dt_date

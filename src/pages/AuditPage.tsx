@@ -53,10 +53,10 @@ export function AuditPage() {
     queryKey: ['audit-logs'],
     queryFn: async () => {
       try {
-        const res = await apiFetch<any>('/api/audit');
+        const res = await apiFetch<any>('/api/v1/audit');
         return Array.isArray(res) ? res : res.logs || [];
       } catch {
-        const fallback = await apiFetch<DecisionLogEntry[]>('/api/decision-logs');
+        const fallback = await apiFetch<DecisionLogEntry[]>('/api/v1/audit-logs');
         return fallback || [];
       }
     },

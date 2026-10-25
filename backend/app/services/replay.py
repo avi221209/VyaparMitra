@@ -1,6 +1,6 @@
 """
 VyaparMitra - Walk-Forward Replay Simulation Engine
-Team Stark | Triwizathon 2026 | PS2: Distribution Intelligence and Inventory Optimization Engine
+Distribution Planning and Inventory Optimization Engine
 
 Simulates 28 days of walk-forward distribution across four weekly cycles:
   - Strict no-leakage: forecasts and plans strictly use data < cycle_start_date.

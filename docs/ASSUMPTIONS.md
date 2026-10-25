@@ -1,5 +1,5 @@
 # VyaparMitra - Engineering Assumptions & Design Choices
-**Team Stark | Triwizathon 2026 | PS2: Distribution Intelligence and Inventory Optimization Engine**
+**Distribution Planning and Inventory Optimization Engine**
 
 As mandated by Rule 7 ("Where the spec is ambiguous, choose the simplest interpretation, write it in docs/ASSUMPTIONS.md, and keep going"), this document records all architectural, modeling, and operational assumptions for VyaparMitra.
 

@@ -29,7 +29,7 @@ export function ForecastDrawer({
   const { data: forecastData, isLoading: forecastLoading } = useQuery({
     queryKey: ['forecast-series', selectedProductId, destinationId],
     queryFn: () =>
-      apiFetch<any>(`/api/forecast/${selectedProductId}/${destinationId}`),
+      apiFetch<any>(`/api/v1/forecast/${selectedProductId}/${destinationId}`),
     enabled: open && Boolean(destinationId),
   });
 
@@ -39,7 +39,7 @@ export function ForecastDrawer({
     queryFn: async () => {
       try {
         const res = await apiFetch<any[]>(
-          `/api/sales?product_id=${selectedProductId}&location_id=${destinationId}&limit=28`
+          `/api/v1/sales?product_id=${selectedProductId}&location_id=${destinationId}&limit=28`
         );
         return Array.isArray(res) ? res.reverse() : [];
       } catch {

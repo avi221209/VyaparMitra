@@ -1,6 +1,6 @@
 """
 Unit and Integration Tests for Two-Stage Optimizer (PuLP + CBC)
-Team Stark | Triwizathon 2026 | PS2: Distribution Intelligence and Inventory Optimization Engine
+Distribution Planning and Inventory Optimization Engine
 """
 
 from datetime import date as dt_date, timedelta

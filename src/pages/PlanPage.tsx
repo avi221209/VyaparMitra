@@ -192,12 +192,12 @@ export function PlanPage() {
   // Fetch products and locations for names
   const { data: products = [] } = useQuery({
     queryKey: ['products'],
-    queryFn: () => apiFetch<any[]>('/api/products'),
+    queryFn: () => apiFetch<any[]>('/api/v1/products'),
   });
 
   const { data: locations = [] } = useQuery({
     queryKey: ['locations'],
-    queryFn: () => apiFetch<any[]>('/api/locations'),
+    queryFn: () => apiFetch<any[]>('/api/v1/locations'),
   });
 
   const productNameMap = useMemo(() => {
@@ -225,7 +225,7 @@ export function PlanPage() {
     queryKey: ['latest-plan'],
     queryFn: async () => {
       try {
-        return await apiFetch<any>('/api/plan/latest');
+        return await apiFetch<any>('/api/v1/plan/latest');
       } catch (err: any) {
         if (err.status === 404) return null;
         throw err;
@@ -237,7 +237,7 @@ export function PlanPage() {
   // Generate Plan Mutation
   const generatePlanMutation = useMutation({
     mutationFn: (customPayload?: any) =>
-      apiFetch<any>('/api/plan', {
+      apiFetch<any>('/api/v1/plan', {
         method: 'POST',
         body: JSON.stringify({
           horizon,
@@ -270,7 +270,7 @@ export function PlanPage() {
       return;
     }
     try {
-      await apiFetch(`/api/plan/lines/${lineId}/approve`, {
+      await apiFetch(`/api/v1/plan/lines/${lineId}/approve`, {
         method: 'POST',
         body: JSON.stringify({ edited_cartons: currentCartons }),
       });
@@ -280,7 +280,7 @@ export function PlanPage() {
         type: 'success',
         message: 'Approved',
         undoAction: async () => {
-          await apiFetch(`/api/plan/lines/${lineId}/reject`, {
+          await apiFetch(`/api/v1/plan/lines/${lineId}/reject`, {
             method: 'POST',
             body: JSON.stringify({ reason: 'Undo approval' }),
           });
@@ -299,7 +299,7 @@ export function PlanPage() {
       return;
     }
     try {
-      await apiFetch(`/api/plan/lines/${lineId}/reject`, {
+      await apiFetch(`/api/v1/plan/lines/${lineId}/reject`, {
         method: 'POST',
         body: JSON.stringify({ reason: 'Quick keyboard rejection' }),
       });
@@ -309,7 +309,7 @@ export function PlanPage() {
         type: 'info',
         message: 'Rejected',
         undoAction: async () => {
-          await apiFetch(`/api/plan/lines/${lineId}/approve`, {
+          await apiFetch(`/api/v1/plan/lines/${lineId}/approve`, {
             method: 'POST',
             body: JSON.stringify({ edited_cartons: originalCartons }),
           });
@@ -331,7 +331,7 @@ export function PlanPage() {
 
     try {
       if (payload.source_overrides || payload.destination_overrides) {
-        await apiFetch('/api/scenario/override', {
+        await apiFetch('/api/v1/scenario/override', {
           method: 'POST',
           body: JSON.stringify(payload),
         });
@@ -394,7 +394,7 @@ export function PlanPage() {
 
   const handleResetScenario = async () => {
     try {
-      await apiFetch('/api/scenario/override', {
+      await apiFetch('/api/v1/scenario/override', {
         method: 'POST',
         body: JSON.stringify({ source_overrides: {}, destination_overrides: {} }),
       });

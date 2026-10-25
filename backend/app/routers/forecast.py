@@ -1,10 +1,6 @@
 """
 VyaparMitra - Forecasting API Router
-Team Stark | Triwizathon 2026 | PS2: Distribution Intelligence and Inventory Optimization Engine
-
-Endpoints:
- - POST /api/forecast/run: Fit and select best forecasting model for all series, cache in DB.
- - GET /api/forecast/{product}/{location}: Fetch forecast, metrics, uncertainty sigma, and warnings.
+FMCG Distribution Intelligence and Inventory Optimization Engine
 """
 
 from datetime import date as dt_date, timedelta
@@ -65,14 +61,9 @@ def resolve_location_id(session: Session, location_input: str) -> str:
 
 
 @router.post(
-    "/api/forecast/run",
-    response_model=ForecastRunResponse,
-    summary="Fit and select candidate model for all series and cache in DB",
-)
-@router.post(
     "/api/v1/forecast/run",
     response_model=ForecastRunResponse,
-    include_in_schema=False,
+    summary="Fit and select candidate model for all series and cache in DB",
 )
 def run_forecast(
     request: Optional[ForecastRunRequest] = Body(default=None),
@@ -144,14 +135,9 @@ def run_forecast(
 
 
 @router.get(
-    "/api/forecast/{product}/{location}",
-    response_model=ForecastSeriesResponse,
-    summary="Get forecast for a specific product and destination location",
-)
-@router.get(
     "/api/v1/forecast/{product}/{location}",
     response_model=ForecastSeriesResponse,
-    include_in_schema=False,
+    summary="Get forecast for a specific product and destination location",
 )
 def get_series_forecast(
     product: str,

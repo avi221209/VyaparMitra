@@ -1,6 +1,6 @@
 """
 VyaparMitra - Benchmark Dispatch Baselines and Methods
-Team Stark | Triwizathon 2026 | PS2: Distribution Intelligence and Inventory Optimization Engine
+Distribution Planning and Inventory Optimization Engine
 
 Implements identical input dispatch policies:
   A    Min/Max Policy: Refill each destination up to fixed max from nearest warehouse;

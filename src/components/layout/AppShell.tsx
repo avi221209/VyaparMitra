@@ -44,7 +44,7 @@ export function AppShell({ children, pageTitle }: AppShellProps) {
   const checkHealth = async () => {
     setCheckingHealth(true);
     try {
-      const res = await apiFetch<any>('/api/health');
+      const res = await apiFetch<any>('/api/v1/health');
       if (res && res.status === 'healthy') {
         setBackendHealthy(true);
       } else {

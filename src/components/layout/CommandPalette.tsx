@@ -92,28 +92,13 @@ export function CommandPalette({
       },
     },
     {
-      id: 'action-backup-state',
-      label: 'Load backup demo state (Instant precomputed plan)',
-      category: 'Demo',
-      icon: <Database className="w-4 h-4 text-forest" strokeWidth={1.5} />,
-      perform: async () => {
-        try {
-          await apiFetch('/api/demo/backup', { method: 'POST' });
-          navigate('/plan');
-          window.location.reload();
-        } catch (e) {
-          console.error('Failed to load backup demo state:', e);
-        }
-      },
-    },
-    {
       id: 'action-force-heuristic',
-      label: 'Force solver fallback (Simulate solver timeout)',
-      category: 'Demo',
+      label: 'Generate plan with heuristic fallback',
+      category: 'Planning',
       icon: <Database className="w-4 h-4 text-madder" strokeWidth={1.5} />,
       perform: async () => {
         try {
-          await apiFetch('/api/plan?force_heuristic=true', { method: 'POST' });
+          await apiFetch('/api/v1/plan?force_heuristic=true', { method: 'POST' });
           navigate('/plan');
           window.location.reload();
         } catch (e) {

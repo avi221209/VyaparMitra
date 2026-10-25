@@ -1,6 +1,6 @@
 """
 Worked-Example and Unit Tests for Requirement & Eligibility Services
-Team Stark | Triwizathon 2026 | PS2: Distribution Intelligence and Inventory Optimization Engine
+Distribution Planning and Inventory Optimization Engine
 
 Pure function tests verifying exact specifications without DB access.
 """

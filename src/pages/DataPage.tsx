@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   XCircle,
   Download,
+  Database,
 } from 'lucide-react';
 
 export interface ValidationIssueItem {
@@ -43,7 +44,7 @@ export function DataPage() {
   // Fetch status to check if data exists
   const { data: statusData, isLoading: statusLoading } = useQuery({
     queryKey: ['system-status'],
-    queryFn: () => apiFetch<any>('/api/status'),
+    queryFn: () => apiFetch<any>('/api/v1/status'),
   });
 
   // Fetch validation issues
@@ -55,22 +56,22 @@ export function DataPage() {
     queryKey: ['validation-issues'],
     queryFn: async () => {
       try {
-        const res = await apiFetch<any>('/api/data/issues');
+        const res = await apiFetch<any>('/api/v1/data/issues');
         return Array.isArray(res) ? res : res.issues || [];
       } catch {
-        const fallback = await apiFetch<ValidationIssueItem[]>('/api/validation-issues');
+        const fallback = await apiFetch<ValidationIssueItem[]>('/api/v1/validation-issues');
         return fallback || [];
       }
     },
   });
 
-  // Seed mutation
-  const seedMutation = useMutation({
-    mutationFn: (variant: string) =>
-      apiFetch(`/api/data/seed?variant=${variant}&seed=1&scenario=balanced`, {
+  // Load sample dataset mutation
+  const loadSampleMutation = useMutation({
+    mutationFn: () =>
+      apiFetch('/api/v1/data/sample', {
         method: 'POST',
       }),
-    onSuccess: (_, variant) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['system-status'] });
       queryClient.invalidateQueries({ queryKey: ['validation-issues'] });
       queryClient.invalidateQueries({ queryKey: ['latest-plan'] });
@@ -78,22 +79,17 @@ export function DataPage() {
       queryClient.invalidateQueries({ queryKey: ['locations'] });
       queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
       queryClient.invalidateQueries({ queryKey: ['evaluation-data'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
       window.dispatchEvent(new Event('role-changed'));
-
-      const names: Record<string, string> = {
-        normal: 'Sample data loaded',
-        defects: 'File with errors loaded',
-        low_w1: 'Low W1 stock scenario loaded',
-      };
       toast({
         type: 'success',
-        message: names[variant] || 'Data loaded',
+        message: 'Sample data loaded successfully from data/sample/',
       });
     },
     onError: (err: any) => {
       toast({
         type: 'error',
-        message: err.message || 'Failed to load data',
+        message: err.message || 'Failed to load sample data',
       });
     },
   });
@@ -101,7 +97,7 @@ export function DataPage() {
   // Resolve / Correct mutation
   const resolveMutation = useMutation({
     mutationFn: ({ id, note }: { id: string; note: string }) =>
-      apiFetch(`/api/data/issues/${id}/resolve`, {
+      apiFetch(`/api/v1/data/issues/${id}/resolve`, {
         method: 'POST',
         body: JSON.stringify({ resolution_note: note }),
       }),
@@ -119,7 +115,7 @@ export function DataPage() {
   // Acknowledge / Exclude mutation
   const acknowledgeMutation = useMutation({
     mutationFn: (id: string) =>
-      apiFetch(`/api/data/issues/${id}/acknowledge`, {
+      apiFetch(`/api/v1/data/issues/${id}/acknowledge`, {
         method: 'POST',
         body: JSON.stringify({ acknowledgement_note: 'Excluded from planning' }),
       }),
@@ -142,22 +138,39 @@ export function DataPage() {
     }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      // Synthetic demonstration file load
-      seedMutation.mutate('normal');
-      toast({
-        type: 'info',
-        message: `Ingesting ${e.dataTransfer.files[0].name}`,
-      });
+      const file = e.dataTransfer.files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+      try {
+        await apiFetch('/api/v1/data/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        queryClient.invalidateQueries({ queryKey: ['system-status'] });
+        queryClient.invalidateQueries({ queryKey: ['validation-issues'] });
+        queryClient.invalidateQueries({ queryKey: ['products'] });
+        queryClient.invalidateQueries({ queryKey: ['locations'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+        toast({
+          type: 'success',
+          message: `Ingested ${file.name} successfully`,
+        });
+      } catch (err: any) {
+        toast({
+          type: 'error',
+          message: err.message || `Failed to ingest ${file.name}`,
+        });
+      }
     }
   };
 
   const hasData = (statusData?.counts?.products || 0) > 0;
-  const isSeeding = seedMutation.isPending;
+  const isSeeding = loadSampleMutation.isPending;
 
   const issueColumns = [
     {
@@ -270,7 +283,7 @@ export function DataPage() {
     queryKey: ['latest-plan'],
     queryFn: async () => {
       try {
-        return await apiFetch<any>('/api/plan/latest');
+        return await apiFetch<any>('/api/v1/plan/latest');
       } catch {
         return null;
       }
@@ -360,56 +373,21 @@ export function DataPage() {
 
       {/* 1. DATA LOADING SECTION */}
       <section className="flex flex-col gap-3">
-        <h2 className="text-section font-serif font-semibold text-ink">Load data</h2>
-        <p className="text-body text-ink-2">Choose a sample scenario to explore, or drag your own CSV files below.</p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <button
-            type="button"
-            onClick={() => seedMutation.mutate('normal')}
-            disabled={isSeeding}
-            className="text-left p-4 bg-surface border border-line rounded-control hover:border-brand transition-colors disabled:opacity-50 group"
+        <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-surface border border-line rounded-control">
+          <div>
+            <h2 className="text-section font-serif font-semibold text-ink">Bundled sample data</h2>
+            <p className="text-body text-ink-2 mt-0.5">
+              Reset or load the bundled regional FMCG sample dataset (24 SKUs across 6 distribution centers).
+            </p>
+          </div>
+          <Button
+            variant="secondary"
+            onClick={() => loadSampleMutation.mutate()}
+            loading={loadSampleMutation.isPending}
+            icon={<Database className="w-4 h-4 text-brand" strokeWidth={1.5} />}
           >
-            <div className="flex items-center gap-2 mb-1">
-              <CheckCircle2 className="w-4 h-4 text-ok" strokeWidth={1.5} />
-              <span className="text-body font-semibold text-ink group-hover:text-brand">Clean sample data</span>
-            </div>
-            <p className="text-meta text-ink-3">24 SKUs, 6 nodes, 90 days of sales. All data passes validation.</p>
-            {isSeeding && seedMutation.variables === 'normal' && (
-              <span className="text-meta text-brand mt-1 block">Loading...</span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => seedMutation.mutate('defects')}
-            disabled={isSeeding}
-            className="text-left p-4 bg-surface border border-line rounded-control hover:border-turmeric transition-colors disabled:opacity-50 group"
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <AlertTriangle className="w-4 h-4 text-turmeric" strokeWidth={1.5} />
-              <span className="text-body font-semibold text-ink group-hover:text-turmeric">Data with 20 defects</span>
-            </div>
-            <p className="text-meta text-ink-3">Same dataset with intentional errors — see the validation gate in action.</p>
-            {isSeeding && seedMutation.variables === 'defects' && (
-              <span className="text-meta text-turmeric mt-1 block">Loading...</span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => seedMutation.mutate('low_w1')}
-            disabled={isSeeding}
-            className="text-left p-4 bg-surface border border-line rounded-control hover:border-madder transition-colors disabled:opacity-50 group"
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <AlertCircle className="w-4 h-4 text-madder" strokeWidth={1.5} />
-              <span className="text-body font-semibold text-ink group-hover:text-madder">Low W1 stock</span>
-            </div>
-            <p className="text-meta text-ink-3">W1 warehouse has 20% less stock — reveals shortages and rescue paths.</p>
-            {isSeeding && seedMutation.variables === 'low_w1' && (
-              <span className="text-meta text-madder mt-1 block">Loading...</span>
-            )}
-          </button>
+            Load sample data
+          </Button>
         </div>
       </section>
 
@@ -435,7 +413,7 @@ export function DataPage() {
         <div className="flex flex-wrap items-center justify-center gap-3 text-meta text-ink-2 border-t border-line pt-3 w-full max-w-2xl">
           <span className="text-ink-3">Download CSV templates:</span>
           <a
-            href="/api/data/template/products"
+            href="/api/v1/data/template/products"
             download="products_template.csv"
             className="hover:text-brand hover:underline"
           >
@@ -443,7 +421,7 @@ export function DataPage() {
           </a>
           <span className="text-line">|</span>
           <a
-            href="/api/data/template/locations"
+            href="/api/v1/data/template/locations"
             download="locations_template.csv"
             className="hover:text-brand hover:underline"
           >
@@ -451,7 +429,7 @@ export function DataPage() {
           </a>
           <span className="text-line">|</span>
           <a
-            href="/api/data/template/lanes"
+            href="/api/v1/data/template/lanes"
             download="lanes_template.csv"
             className="hover:text-brand hover:underline"
           >
@@ -459,7 +437,7 @@ export function DataPage() {
           </a>
           <span className="text-line">|</span>
           <a
-            href="/api/data/template/batches"
+            href="/api/v1/data/template/batches"
             download="batches_template.csv"
             className="hover:text-brand hover:underline"
           >
@@ -467,7 +445,7 @@ export function DataPage() {
           </a>
           <span className="text-line">|</span>
           <a
-            href="/api/data/template/inventory_snapshots"
+            href="/api/v1/data/template/inventory_snapshots"
             download="inventory_snapshots_template.csv"
             className="hover:text-brand hover:underline"
           >
@@ -475,7 +453,7 @@ export function DataPage() {
           </a>
           <span className="text-line">|</span>
           <a
-            href="/api/data/template/sales_daily"
+            href="/api/v1/data/template/sales_daily"
             download="sales_daily_template.csv"
             className="hover:text-brand hover:underline"
           >
@@ -511,7 +489,7 @@ export function DataPage() {
               <Button
                 variant="primary"
                 loading={isSeeding}
-                onClick={() => seedMutation.mutate('normal')}
+                onClick={() => loadSampleMutation.mutate()}
               >
                 Load sample data
               </Button>

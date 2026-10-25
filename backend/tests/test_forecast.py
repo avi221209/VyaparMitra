@@ -1,6 +1,6 @@
 """
 Unit and Integration Tests for Demand Forecasting Service
-Team Stark | Triwizathon 2026 | PS2: Distribution Intelligence and Inventory Optimization Engine
+Distribution Planning and Inventory Optimization Engine
 """
 
 from datetime import date as dt_date, timedelta
@@ -177,7 +177,7 @@ def test_forecast_api_run_and_get():
     client = TestClient(app)
 
     # 1. Run forecast engine for all series
-    run_resp = client.post("/api/forecast/run")
+    run_resp = client.post("/api/v1/forecast/run")
     assert run_resp.status_code == 200
     run_data = run_resp.json()
 
@@ -200,7 +200,7 @@ def test_forecast_api_run_and_get():
     pid = sample_item["product_id"]
     lid = sample_item["location_id"]
 
-    get_resp = client.get(f"/api/forecast/{pid}/{lid}")
+    get_resp = client.get(f"/api/v1/forecast/{pid}/{lid}")
     assert get_resp.status_code == 200
     get_data = get_resp.json()
 

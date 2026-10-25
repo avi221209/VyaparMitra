@@ -1,7 +1,6 @@
 # VyaparMitra Design System Specification
 
-**Regional FMCG Distribution Intelligence & Planning Ledger**  
-*Triwizathon 2026 | Team Stark*
+**Regional FMCG Distribution Intelligence & Planning Ledger**
 
 ---
 

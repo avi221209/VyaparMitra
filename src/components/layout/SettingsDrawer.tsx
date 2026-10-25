@@ -15,7 +15,7 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
 
   const { data: currentSettings, isLoading } = useQuery({
     queryKey: ['system-settings'],
-    queryFn: () => apiFetch<any>('/api/settings'),
+    queryFn: () => apiFetch<any>('/api/v1/settings'),
     enabled: open,
   });
 
@@ -35,7 +35,7 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
 
   const updateMutation = useMutation({
     mutationFn: (updated: any) =>
-      apiFetch('/api/settings', {
+      apiFetch('/api/v1/settings', {
         method: 'PUT',
         body: JSON.stringify(updated),
       }),
@@ -50,7 +50,7 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
   });
 
   const resetMutation = useMutation({
-    mutationFn: () => apiFetch('/api/settings/reset', { method: 'POST' }),
+    mutationFn: () => apiFetch('/api/v1/settings/reset', { method: 'POST' }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['system-settings'] });
       toast({ type: 'info', message: 'Settings reset to default parameters' });

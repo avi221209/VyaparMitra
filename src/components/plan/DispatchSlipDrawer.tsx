@@ -69,7 +69,7 @@ export function DispatchSlipDrawer({
     refetch,
   } = useQuery({
     queryKey: ['plan-line-explanation', lineId],
-    queryFn: () => apiFetch<any>(`/api/plan/lines/${lineId}`),
+    queryFn: () => apiFetch<any>(`/api/v1/plan/lines/${lineId}`),
     enabled: Boolean(lineId && !rescueContext),
   });
 
@@ -95,7 +95,7 @@ export function DispatchSlipDrawer({
   // Standard Approve / Edit Mutation
   const approveMutation = useMutation({
     mutationFn: (newCartons?: number) =>
-      apiFetch(`/api/plan/lines/${lineId}/approve`, {
+      apiFetch(`/api/v1/plan/lines/${lineId}/approve`, {
         method: 'POST',
         body: JSON.stringify({
           edited_cartons: newCartons !== undefined ? newCartons : cartons,
@@ -129,7 +129,7 @@ export function DispatchSlipDrawer({
   // Standard Reject Mutation
   const rejectMutation = useMutation({
     mutationFn: (reason: string) =>
-      apiFetch(`/api/plan/lines/${lineId}/reject`, {
+      apiFetch(`/api/v1/plan/lines/${lineId}/reject`, {
         method: 'POST',
         body: JSON.stringify({ reason: reason || 'Manual rejection' }),
       }),
@@ -192,7 +192,7 @@ export function DispatchSlipDrawer({
       const listingId = rescueContext.rescueAnalysis?.best_listing_id;
       if (!listingId) throw new Error('No eligible surplus listing selected.');
 
-      return apiFetch<any>(`/api/plan/${rescueContext.runId}/rescue/apply`, {
+      return apiFetch<any>(`/api/v1/plan/${rescueContext.runId}/rescue/apply`, {
         method: 'POST',
         body: JSON.stringify({
           destination_id: rescueContext.destinationId,
@@ -217,7 +217,7 @@ export function DispatchSlipDrawer({
         message: `Rescued ${rescueCartons} cartons from ${sourceName}`,
         undoAction: async () => {
           if (createdLineId && runId) {
-            await apiFetch(`/api/plan/${runId}/rescue/undo`, {
+            await apiFetch(`/api/v1/plan/${runId}/rescue/undo`, {
               method: 'POST',
               body: JSON.stringify({ line_id: createdLineId }),
             });

@@ -56,13 +56,13 @@ export function EvaluatePage() {
     refetch: refetchEval,
   } = useQuery({
     queryKey: ['evaluation-data'],
-    queryFn: () => apiFetch<any>('/api/evaluate'),
+    queryFn: () => apiFetch<any>('/api/v1/evaluate'),
     staleTime: 60000,
   });
 
   // Re-run evaluation mutation
   const rerunMutation = useMutation({
-    mutationFn: () => apiFetch<any>('/api/evaluate/rerun', { method: 'POST' }),
+    mutationFn: () => apiFetch<any>('/api/v1/evaluate/rerun', { method: 'POST' }),
     onSuccess: () => {
       setRerunProgress(10);
       setRerunError(null);
@@ -70,7 +70,7 @@ export function EvaluatePage() {
       // Poll status
       const interval = setInterval(async () => {
         try {
-          const statusRes = await apiFetch<any>('/api/evaluate/status');
+          const statusRes = await apiFetch<any>('/api/v1/evaluate/status');
           if (statusRes.progress_pct !== undefined) {
             setRerunProgress(statusRes.progress_pct);
           }
@@ -218,9 +218,6 @@ export function EvaluatePage() {
             <h2 className="text-section font-serif font-bold text-ink">
               Walk-Forward Replay Benchmark
             </h2>
-            <div className="px-2 py-0.5 border border-turmeric text-turmeric bg-turmeric-wash text-meta font-medium rounded-chip rotate-[-1.5deg] select-none">
-              Simulated data
-            </div>
           </div>
           <span className="text-meta text-ink-3 tabular-nums">
             Last evaluated: {evalData?.timestamp ? new Date(evalData.timestamp).toLocaleString('en-IN') : '24 Oct 2026, 20:18'} | 420 cycle optimizations (5 seeds × 3 scenarios × 7 methods)

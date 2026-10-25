@@ -1,6 +1,6 @@
 """
 VyaparMitra - Surplus Rescue & Dead-Stock Intelligence Tests
-Team Stark | Triwizathon 2026 | PS2: Distribution Intelligence and Inventory Optimization Engine
+Distribution Planning and Inventory Optimization Engine
 
 Tests all 6 core features:
   1. Feature A: Verified Spare Stock Gate (ring-fenced seller protection & exact refusal text)
@@ -434,12 +434,12 @@ def test_feature_e_apply_shortfall_rescue_endpoint_and_undo(client: TestClient, 
     sim.seed_database(session)
 
     # 2. Run plan to create unmet demand
-    plan_res = client.post("/api/plan", json={"horizon": 7}, headers={"X-Role": "planner"})
+    plan_res = client.post("/api/v1/plan", json={"horizon": 7}, headers={"X-Role": "planner"})
     assert plan_res.status_code == 200
     run_id = plan_res.json()["run_id"]
 
     # 3. Fetch plan to inspect unmet panel
-    get_res = client.get(f"/api/plan/{run_id}")
+    get_res = client.get(f"/api/v1/plan/{run_id}")
     assert get_res.status_code == 200
     plan_data = get_res.json()
     unmet_panel = plan_data["unmet_panel"]
@@ -455,7 +455,7 @@ def test_feature_e_apply_shortfall_rescue_endpoint_and_undo(client: TestClient, 
 
     # 4. Role gating check: unprivileged role rejected
     unauth_res = client.post(
-        f"/api/plan/{run_id}/rescue/apply",
+        f"/api/v1/plan/{run_id}/rescue/apply",
         json={
             "destination_id": dest_id,
             "product_id": eligible_listing.product_id,
@@ -469,7 +469,7 @@ def test_feature_e_apply_shortfall_rescue_endpoint_and_undo(client: TestClient, 
     # 5. Apply rescue with planner role
     before_reserved = eligible_listing.reserved
     apply_res = client.post(
-        f"/api/plan/{run_id}/rescue/apply",
+        f"/api/v1/plan/{run_id}/rescue/apply",
         json={
             "destination_id": dest_id,
             "product_id": eligible_listing.product_id,
@@ -499,7 +499,7 @@ def test_feature_e_apply_shortfall_rescue_endpoint_and_undo(client: TestClient, 
 
     # 6. Undo the rescue
     undo_res = client.post(
-        f"/api/plan/{run_id}/rescue/undo?log_id={undo_token}",
+        f"/api/v1/plan/{run_id}/rescue/undo?log_id={undo_token}",
         headers={"X-Role": "planner"},
     )
     assert undo_res.status_code == 200

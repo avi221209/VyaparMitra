@@ -1,6 +1,6 @@
 """
 VyaparMitra - Surplus Rescue & Dead-Stock Intelligence Service
-Team Stark | Triwizathon 2026 | PS2: Distribution Intelligence and Inventory Optimization Engine
+Distribution Planning and Inventory Optimization Engine
 
 Pure, deterministic business logic implementing:
   Feature A: Verified Spare Stock Gate (ring-fenced seller protection)

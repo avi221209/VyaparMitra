@@ -48,7 +48,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="VyaparMitra: FMCG Distribution Intelligence and Inventory Optimization Engine (Triwizathon 2026, PS2)",
+    description="VyaparMitra: FMCG Distribution Intelligence and Inventory Optimization Engine",
     lifespan=lifespan,
 )
 
@@ -92,7 +92,6 @@ def get_current_role(x_role: str = Header(default="planner")) -> str:
 # -------------------------------------------------------------------
 # Health & Status Endpoints
 # -------------------------------------------------------------------
-@app.get("/api/health", tags=["System"])
 @app.get("/api/v1/health", tags=["System"])
 def health_check() -> dict:
     return {
@@ -103,7 +102,6 @@ def health_check() -> dict:
     }
 
 
-@app.get("/api/status", tags=["System"])
 @app.get("/api/v1/status", tags=["System"])
 def system_status(session: Session = Depends(get_session)) -> dict:
     loc_count = session.exec(select(func.count(Location.id))).one()
@@ -132,44 +130,13 @@ def system_status(session: Session = Depends(get_session)) -> dict:
 
 
 # -------------------------------------------------------------------
-# Data Seeding Endpoint
-# -------------------------------------------------------------------
-@app.post("/api/data/seed", tags=["Simulator"])
-@app.post("/api/v1/simulator/seed", tags=["Simulator"])
-def seed_simulated_data(
-    variant: str = Query(default="normal", pattern="^(normal|defects|low_w1)$"),
-    seed: int = Query(default=1),
-    scenario: str = Query(default="balanced", pattern="^(balanced|scarce|abundant)$"),
-    session: Session = Depends(get_session),
-    role: str = Depends(get_current_role),
-) -> dict:
-    """
-    Seed simulated FMCG distribution network into SQLite database.
-    Variants: normal | defects | low_w1
-    Scenarios: balanced (1.0) | scarce (0.8) | abundant (1.3)
-    """
-    sim = FMCGSimulator(
-        seed=seed,
-        variant=variant,
-        scenario=scenario,
-    )
-    result = sim.seed_database(session)
-    export_paths = sim.export_to_csv()
-    result["exported_csvs"] = export_paths
-    result["is_simulated"] = True
-    return result
-
-
-# -------------------------------------------------------------------
 # Settings Endpoints (Defaults: H=7, z=1.28, alpha=0.25, Gmax=1, Eshort=21, etc.)
 # -------------------------------------------------------------------
-@app.get("/api/settings", response_model=SettingsRead, tags=["Settings"])
 @app.get("/api/v1/settings", response_model=SettingsRead, tags=["Settings"])
 def read_settings(session: Session = Depends(get_session)) -> Settings:
     return get_current_settings(session)
 
 
-@app.put("/api/settings", response_model=SettingsRead, tags=["Settings"])
 @app.put("/api/v1/settings", response_model=SettingsRead, tags=["Settings"])
 def update_settings(
     payload: SettingsUpdate,
@@ -179,7 +146,6 @@ def update_settings(
     return update_system_settings(session, payload, role=role)
 
 
-@app.post("/api/settings/reset", response_model=SettingsRead, tags=["Settings"])
 @app.post("/api/v1/settings/reset", response_model=SettingsRead, tags=["Settings"])
 def reset_settings(
     session: Session = Depends(get_session),
@@ -191,37 +157,32 @@ def reset_settings(
 # -------------------------------------------------------------------
 # Master Data Read Endpoints
 # -------------------------------------------------------------------
-@app.get("/api/locations", tags=["Master Data"])
-@app.get("/api/v1/warehouses", tags=["Master Data"])
-@app.get("/api/v1/destinations", tags=["Master Data"])
+@app.get("/api/v1/locations", tags=["Master Data"])
 def list_locations(session: Session = Depends(get_session)) -> list[Location]:
     return list(session.exec(select(Location)).all())
 
 
-@app.get("/api/products", tags=["Master Data"])
 @app.get("/api/v1/products", tags=["Master Data"])
 def list_products(session: Session = Depends(get_session)) -> list[Product]:
     return list(session.exec(select(Product)).all())
 
 
-@app.get("/api/lanes", tags=["Master Data"])
 @app.get("/api/v1/lanes", tags=["Master Data"])
 def list_lanes(session: Session = Depends(get_session)) -> list[Lane]:
     return list(session.exec(select(Lane)).all())
 
 
-@app.get("/api/batches", tags=["Master Data"])
 @app.get("/api/v1/batches", tags=["Master Data"])
 def list_batches(session: Session = Depends(get_session)) -> list[Batch]:
     return list(session.exec(select(Batch)).all())
 
 
-@app.get("/api/snapshots", tags=["Inventory"])
+@app.get("/api/v1/snapshots", tags=["Inventory"])
 def list_snapshots(session: Session = Depends(get_session)) -> list[InventorySnapshot]:
     return list(session.exec(select(InventorySnapshot)).all())
 
 
-@app.get("/api/sales", tags=["Sales"])
+@app.get("/api/v1/sales", tags=["Sales"])
 def list_sales(
     limit: int = 100,
     product_id: Optional[str] = None,
@@ -237,12 +198,11 @@ def list_sales(
     return list(session.exec(stmt).all())
 
 
-@app.get("/api/validation-issues", tags=["Validation"])
+@app.get("/api/v1/validation-issues", tags=["Validation"])
 def list_validation_issues(session: Session = Depends(get_session)) -> list[ValidationIssue]:
     return list(session.exec(select(ValidationIssue)).all())
 
 
-@app.get("/api/decision-logs", tags=["Audit"])
 @app.get("/api/v1/audit-logs", tags=["Audit"])
 def list_decision_logs(
     limit: int = 50,

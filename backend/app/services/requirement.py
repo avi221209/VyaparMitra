@@ -1,6 +1,6 @@
 """
 VyaparMitra - Net Requirement Calculation Service
-Team Stark | Triwizathon 2026 | PS2: Distribution Intelligence and Inventory Optimization Engine
+Distribution Planning and Inventory Optimization Engine
 
 PURE FUNCTIONS ONLY - NO DATABASE ACCESS INSIDE.
 

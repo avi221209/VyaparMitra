@@ -1,6 +1,6 @@
 """
 VyaparMitra - Demand Forecasting Service
-Team Stark | Triwizathon 2026 | PS2: Distribution Intelligence and Inventory Optimization Engine
+Distribution Planning and Inventory Optimization Engine
 
 Per product-destination series, evaluates candidate models:
  (a) seasonal-naive (same weekday last week)

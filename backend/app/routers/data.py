@@ -4,7 +4,8 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, UploadFile, status
 from fastapi.responses import PlainTextResponse
 import pandas as pd
-from sqlmodel import Session, select
+from pathlib import Path
+from sqlmodel import Session, select, delete
 
 from backend.app.db import get_session
 from backend.app.models import (
@@ -13,6 +14,8 @@ from backend.app.models import (
     InventorySnapshot,
     Lane,
     Location,
+    PlanLine,
+    PlanRun,
     Product,
     SalesDaily,
     ValidationIssue,
@@ -25,7 +28,7 @@ from backend.app.services.validation import (
     resolve_validation_issue,
 )
 
-router = APIRouter(prefix="/api/data", tags=["Data & Validation"])
+router = APIRouter(prefix="/api/v1/data", tags=["Data & Validation"])
 
 
 TEMPLATES: Dict[str, Dict[str, Any]] = {
@@ -250,7 +253,166 @@ async def upload_csv_file(
 
 
 # -------------------------------------------------------------------
-# 3. Validation Issues Endpoints
+# 3. Load Sample Dataset from data/sample/
+# -------------------------------------------------------------------
+@router.post("/sample")
+def load_sample_dataset(
+    session: Session = Depends(get_session),
+    role: str = Depends(get_current_role),
+) -> dict:
+    """
+    Load bundled regional FMCG sample dataset directly from data/sample/ CSV files.
+    """
+    sample_dir = Path("data/sample")
+    if not sample_dir.exists():
+        sample_dir = Path(__file__).resolve().parents[3] / "data" / "sample"
+    if not sample_dir.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Bundled sample data directory 'data/sample' not found.",
+        )
+
+    # Clear existing planning and data records
+    for model in [ValidationIssue, PlanLine, PlanRun, Batch, InventorySnapshot, SalesDaily, Lane, Product, Location]:
+        session.exec(delete(model))
+    session.commit()
+
+    # 1. Locations
+    loc_file = sample_dir / "locations.csv"
+    if loc_file.exists():
+        df_loc = pd.read_csv(loc_file)
+        for _, row in df_loc.iterrows():
+            session.add(Location(
+                id=str(row["id"]),
+                name=str(row["name"]),
+                type=str(row["type"]),
+                city=str(row["city"]),
+                state=str(row["state"]),
+                is_simulated=True,
+            ))
+        session.commit()
+
+    # 2. Products
+    prod_file = sample_dir / "products.csv"
+    if prod_file.exists():
+        df_prod = pd.read_csv(prod_file)
+        for _, row in df_prod.iterrows():
+            session.add(Product(
+                id=str(row["id"]),
+                name=str(row["name"]),
+                category=str(row["category"]),
+                unit=str(row["unit"]),
+                case_pack=int(row["case_pack"]),
+                load_per_carton=float(row.get("load_per_carton", 1.0)),
+                unit_cost=float(row.get("unit_cost", 10.0)),
+                unit_margin=float(row.get("unit_margin", 2.0)),
+                min_remaining_shelf_days=int(row.get("min_remaining_shelf_days", 21)),
+                is_simulated=True,
+            ))
+        session.commit()
+
+    # 3. Lanes
+    lanes_file = sample_dir / "lanes.csv"
+    if lanes_file.exists():
+        df_lanes = pd.read_csv(lanes_file)
+        for _, row in df_lanes.iterrows():
+            session.add(Lane(
+                id=str(row["id"]),
+                source_id=str(row["source_id"]),
+                destination_id=str(row["destination_id"]),
+                lead_time_days=int(row["lead_time_days"]),
+                cost_per_carton=float(row["cost_per_carton"]),
+                capacity_load=float(row["capacity_load"]) if pd.notna(row.get("capacity_load")) else None,
+                distance_km=float(row["distance_km"]) if pd.notna(row.get("distance_km")) else None,
+                is_simulated=True,
+            ))
+        session.commit()
+
+    # 4. Batches
+    batches_file = sample_dir / "batches.csv"
+    if batches_file.exists():
+        df_batches = pd.read_csv(batches_file)
+        for _, row in df_batches.iterrows():
+            exp_date = datetime.strptime(str(row["expiry_date"]), "%Y-%m-%d").date()
+            session.add(Batch(
+                id=str(row["id"]),
+                location_id=str(row["location_id"]),
+                product_id=str(row["product_id"]),
+                quantity=int(row["quantity"]),
+                expiry_date=exp_date,
+                batch_code=str(row.get("batch_code", "")),
+                cost_per_carton=float(row.get("cost_per_carton", 100.0)),
+                is_simulated=True,
+            ))
+        session.commit()
+
+    # 5. Inventory Snapshots
+    snap_file = sample_dir / "inventory_snapshots.csv"
+    if snap_file.exists():
+        df_snap = pd.read_csv(snap_file)
+        for _, row in df_snap.iterrows():
+            s_date = datetime.strptime(str(row["snapshot_date"]), "%Y-%m-%d").date() if pd.notna(row.get("snapshot_date")) else date(2026, 10, 24)
+            session.add(InventorySnapshot(
+                location_id=str(row["location_id"]),
+                product_id=str(row["product_id"]),
+                on_hand=int(row["on_hand"]),
+                reserved=int(row.get("reserved", 0)),
+                in_transit=int(row.get("in_transit", 0)),
+                snapshot_date=s_date,
+                is_simulated=True,
+            ))
+        session.commit()
+
+    # 6. Sales Daily
+    sales_file = sample_dir / "sales_daily.csv"
+    if sales_file.exists():
+        df_sales = pd.read_csv(sales_file)
+        for _, row in df_sales.iterrows():
+            s_date = datetime.strptime(str(row["date"]), "%Y-%m-%d").date()
+            session.add(SalesDaily(
+                date=s_date,
+                product_id=str(row["product_id"]),
+                location_id=str(row["location_id"]),
+                units=int(row["units"]),
+                is_simulated=True,
+            ))
+        session.commit()
+
+    # Run data validation
+    validator = DataValidator(session)
+    issues = validator.run_all(persist=True)
+
+    # Log to decision log
+    session.add(DecisionLog(
+        action="LOAD_SAMPLE_DATA",
+        actor_role=role,
+        entity="System",
+        note="Loaded bundled sample dataset from data/sample/",
+        diff={"source": "data/sample/"},
+    ))
+    session.commit()
+
+    from backend.app.routers.dashboard import invalidate_dashboard_cache
+    invalidate_dashboard_cache()
+
+    return {
+        "status": "success",
+        "message": "Sample data loaded successfully from data/sample/",
+        "is_simulated": True,
+        "counts": {
+            "locations": len(session.exec(select(Location)).all()),
+            "products": len(session.exec(select(Product)).all()),
+            "lanes": len(session.exec(select(Lane)).all()),
+            "batches": len(session.exec(select(Batch)).all()),
+            "inventory_snapshots": len(session.exec(select(InventorySnapshot)).all()),
+            "sales_daily": len(session.exec(select(SalesDaily)).all()),
+            "validation_issues": len(issues),
+        },
+    }
+
+
+# -------------------------------------------------------------------
+# 4. Validation Issues Endpoints
 # -------------------------------------------------------------------
 @router.get("/issues")
 def list_validation_issues(session: Session = Depends(get_session)):

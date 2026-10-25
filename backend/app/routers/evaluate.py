@@ -1,12 +1,6 @@
 """
 VyaparMitra - Evaluation & Benchmark API Router
-Team Stark | Triwizathon 2026 | PS2: Distribution Intelligence and Inventory Optimization Engine
-
-Endpoints:
-  GET  /api/evaluate         -> Returns cached walk-forward replay benchmark results (instant)
-  POST /api/evaluate/rerun   -> Triggers background re-run job with incremental progress tracking
-
-  GET  /api/evaluate/status  -> Returns status and progress of the background job
+FMCG Distribution Intelligence and Inventory Optimization Engine
 """
 
 from typing import Any, Dict
@@ -19,7 +13,7 @@ from backend.app.services.replay import (
     global_eval_runner,
 )
 
-router = APIRouter(prefix="/api/evaluate", tags=["Evaluation & Benchmarks"])
+router = APIRouter(prefix="/api/v1/evaluate", tags=["Evaluation & Benchmarks"])
 
 
 @router.get("", response_model=Dict[str, Any])

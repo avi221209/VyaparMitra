@@ -1,17 +1,18 @@
 """
 VyaparMitra - Planning API & Rule Checker Test Suite
-Team Stark | Triwizathon 2026 | PS2: Distribution Intelligence and Inventory Optimization Engine
+Distribution Planning and Inventory Optimization Engine
 
 Tests:
- 1. POST /api/plan executes forecast, requirement, eligibility, optimizer, counterfactuals and returns run id and lines.
- 2. GET /api/plan/{run_id} returns lines, totals (transport, unmet demand, safety-stock gap), and unmet panel with fixes.
- 3. GET /api/plan/lines/{id} returns explanation card data built ONLY from calculated values (no free text generation).
- 4. POST /api/plan/lines/{id}/approve with valid edit is accepted and updates DecisionLog.
+ 1. POST /api/v1/plan executes forecast, requirement, eligibility, optimizer, counterfactuals and returns run id and lines.
+ 2. GET /api/v1/plan/{run_id} returns lines, totals (transport, unmet demand, safety-stock gap), and unmet panel with fixes.
+ 3. GET /api/v1/plan/lines/{id} returns explanation card data built ONLY from calculated values (no free text generation).
+ 4. POST /api/v1/plan/lines/{id}/approve with valid edit is accepted and updates DecisionLog.
  5. Overdrawing edit breaking C1 (stock) or C3 (over-allocation) is refused with HTTP 409, names the violated rule, and logs the attempt.
- 6. POST /api/plan/lines/{id}/reject strictly requires a reason (refused if empty) and sets cartons to 0.
+ 6. POST /api/v1/plan/lines/{id}/reject strictly requires a reason (refused if empty) and sets cartons to 0.
  7. Role enforcement: X-Role header (warehouse forbidden from approve/reject/edit; planner and reviewer authorized).
- 8. GET /api/audit contains every action (OPTIMIZE, APPROVE, EDIT, EDIT_REFUSED, REJECT, OVERRIDE).
+ 8. GET /api/v1/audit contains every action (OPTIMIZE, APPROVE, EDIT, EDIT_REFUSED, REJECT, OVERRIDE).
  9. Quick-edit of W1 stock by -20% raises unmet cartons and does not create stock.
+ 10. POST /api/v1/plan?force_heuristic=true triggers heuristic fallback and reports solver status.
 """
 
 from fastapi.testclient import TestClient
@@ -30,10 +31,10 @@ def seed_test_database(session: Session):
 
 
 def test_post_and_get_plan_lifecycle(client: TestClient):
-    """Test POST /api/plan runs complete pipeline and GET /api/plan/{run_id} returns totals and fixes."""
+    """Test POST /api/v1/plan runs complete pipeline and GET /api/v1/plan/{run_id} returns totals and fixes."""
     # 1. Generate plan
     res = client.post(
-        "/api/plan",
+        "/api/v1/plan",
         json={"horizon": 7, "notes": "Production run"},
         headers={"X-Role": "planner"},
     )
@@ -49,7 +50,7 @@ def test_post_and_get_plan_lifecycle(client: TestClient):
     run_id = data["run_id"]
 
     # 2. Fetch plan by run_id
-    get_res = client.get(f"/api/plan/{run_id}")
+    get_res = client.get(f"/api/v1/plan/{run_id}")
     assert get_res.status_code == 200
     plan_data = get_res.json()
     assert plan_data["run_id"] == run_id
@@ -66,14 +67,14 @@ def test_post_and_get_plan_lifecycle(client: TestClient):
 
 def test_explanation_card_pure_calculated_values(client: TestClient):
     """
-    Test GET /api/plan/lines/{id} returns explanation card data built ONLY from calculated values:
+    Test GET /api/v1/plan/lines/{id} returns explanation card data built ONLY from calculated values:
     sources considered (eligible/excluded with reason, cost, lead time, stock),
     chosen and why (cheapest eligible subject to constraints),
     constraints checked (stock, lead time gap, lane capacity, shelf life with days left and days to sell),
     residual risk (unmet and safety-stock gap).
     """
     # Create plan
-    plan_res = client.post("/api/plan", json={"horizon": 7}, headers={"X-Role": "planner"})
+    plan_res = client.post("/api/v1/plan", json={"horizon": 7}, headers={"X-Role": "planner"})
     assert plan_res.status_code == 200
     lines = plan_res.json()["lines"]
     assert len(lines) > 0
@@ -81,7 +82,7 @@ def test_explanation_card_pure_calculated_values(client: TestClient):
     first_line_id = lines[0]["id"]
 
     # Fetch explanation card
-    card_res = client.get(f"/api/plan/lines/{first_line_id}")
+    card_res = client.get(f"/api/v1/plan/lines/{first_line_id}")
     assert card_res.status_code == 200
     card = card_res.json()
 
@@ -138,7 +139,7 @@ def test_explanation_card_pure_calculated_values(client: TestClient):
 
 def test_valid_edit_accepted_and_logged(client: TestClient):
     """Test valid carton edit on a line is accepted and recorded in DecisionLog."""
-    plan_res = client.post("/api/plan", json={"horizon": 7}, headers={"X-Role": "planner"})
+    plan_res = client.post("/api/v1/plan", json={"horizon": 7}, headers={"X-Role": "planner"})
     lines = plan_res.json()["lines"]
     line_id = lines[0]["id"]
     orig_cartons = lines[0]["cartons"]
@@ -146,7 +147,7 @@ def test_valid_edit_accepted_and_logged(client: TestClient):
     # Decrease cartons by 1 (always valid under C1 stock & C3 Ntot)
     new_cartons = max(1, orig_cartons - 1)
     edit_res = client.post(
-        f"/api/plan/lines/{line_id}/approve",
+        f"/api/v1/plan/lines/{line_id}/approve",
         json={"edited_cartons": new_cartons, "notes": "Adjusted down for buffer"},
         headers={"X-Role": "planner"},
     )
@@ -157,7 +158,7 @@ def test_valid_edit_accepted_and_logged(client: TestClient):
     assert edit_data["line_status"] == "EDITED"
 
     # Verify audit trail contains EDIT action
-    audit_res = client.get("/api/audit")
+    audit_res = client.get("/api/v1/audit")
     assert audit_res.status_code == 200
     logs = audit_res.json()
     edit_log = next((l for l in logs if l["plan_line_id"] == line_id and l["action"] == "EDIT"), None)
@@ -171,14 +172,14 @@ def test_overdrawing_edit_refused_and_rule_named(client: TestClient):
     Test overdrawing edit is refused with HTTP 409 naming the violated rule (e.g. C1_STOCK_EXCEEDED),
     and the attempted edit is STILL logged in DecisionLog.
     """
-    plan_res = client.post("/api/plan", json={"horizon": 7}, headers={"X-Role": "planner"})
+    plan_res = client.post("/api/v1/plan", json={"horizon": 7}, headers={"X-Role": "planner"})
     lines = plan_res.json()["lines"]
     line_id = lines[0]["id"]
 
     # Propose massive overdraw (1,000,000 cartons) far exceeding batch stock
     crazy_cartons = 1000000
     res = client.post(
-        f"/api/plan/lines/{line_id}/approve",
+        f"/api/v1/plan/lines/{line_id}/approve",
         json={"edited_cartons": crazy_cartons, "notes": "Impossible allocation"},
         headers={"X-Role": "reviewer"},
     )
@@ -188,7 +189,7 @@ def test_overdrawing_edit_refused_and_rule_named(client: TestClient):
     assert "C1_STOCK_EXCEEDED" in error_detail or "C1" in error_detail or "C3_OVER_ALLOCATION" in error_detail
 
     # Crucial requirement: "the attempt is still logged"
-    audit_res = client.get("/api/audit")
+    audit_res = client.get("/api/v1/audit")
     assert audit_res.status_code == 200
     logs = audit_res.json()
     refused_log = next((l for l in logs if l["plan_line_id"] == line_id and l["action"] == "EDIT_REFUSED"), None)
@@ -199,21 +200,21 @@ def test_overdrawing_edit_refused_and_rule_named(client: TestClient):
 
 
 def test_reject_requires_a_reason(client: TestClient):
-    """Test POST /api/plan/lines/{id}/reject strictly requires a non-empty reason."""
-    plan_res = client.post("/api/plan", json={"horizon": 7}, headers={"X-Role": "planner"})
+    """Test POST /api/v1/plan/lines/{id}/reject strictly requires a non-empty reason."""
+    plan_res = client.post("/api/v1/plan", json={"horizon": 7}, headers={"X-Role": "planner"})
     lines = plan_res.json()["lines"]
     line_id = lines[0]["id"]
 
     # 1. Missing reason or empty string -> rejected with 400 or 422
     empty_res = client.post(
-        f"/api/plan/lines/{line_id}/reject",
+        f"/api/v1/plan/lines/{line_id}/reject",
         json={"reason": "   "},
         headers={"X-Role": "planner"},
     )
     assert empty_res.status_code in (400, 422)
 
     no_reason_res = client.post(
-        f"/api/plan/lines/{line_id}/reject",
+        f"/api/v1/plan/lines/{line_id}/reject",
         json={},
         headers={"X-Role": "planner"},
     )
@@ -221,7 +222,7 @@ def test_reject_requires_a_reason(client: TestClient):
 
     # 2. Valid reason provided -> successfully rejected and cartons zeroed
     valid_res = client.post(
-        f"/api/plan/lines/{line_id}/reject",
+        f"/api/v1/plan/lines/{line_id}/reject",
         json={"reason": "Truck breakdown on transit lane"},
         headers={"X-Role": "planner"},
     )
@@ -233,7 +234,7 @@ def test_reject_requires_a_reason(client: TestClient):
     assert reject_data["line_status"] == "REJECTED"
 
     # Verify audit log
-    audit_res = client.get("/api/audit")
+    audit_res = client.get("/api/v1/audit")
     logs = audit_res.json()
     rej_log = next((l for l in logs if l["plan_line_id"] == line_id and l["action"] == "REJECT"), None)
     assert rej_log is not None
@@ -245,13 +246,13 @@ def test_role_enforcement_approve_and_reject(client: TestClient):
     Test roles: Approve/edit/reject require planner or reviewer.
     Warehouse role is refused with 403 Forbidden.
     """
-    plan_res = client.post("/api/plan", json={"horizon": 7}, headers={"X-Role": "planner"})
+    plan_res = client.post("/api/v1/plan", json={"horizon": 7}, headers={"X-Role": "planner"})
     lines = plan_res.json()["lines"]
     line_id = lines[0]["id"]
 
     # Warehouse tries to approve
     wh_approve = client.post(
-        f"/api/plan/lines/{line_id}/approve",
+        f"/api/v1/plan/lines/{line_id}/approve",
         headers={"X-Role": "warehouse"},
     )
     assert wh_approve.status_code == 403
@@ -259,7 +260,7 @@ def test_role_enforcement_approve_and_reject(client: TestClient):
 
     # Warehouse tries to reject
     wh_reject = client.post(
-        f"/api/plan/lines/{line_id}/reject",
+        f"/api/v1/plan/lines/{line_id}/reject",
         json={"reason": "Warehouse decision"},
         headers={"X-Role": "warehouse"},
     )
@@ -267,7 +268,7 @@ def test_role_enforcement_approve_and_reject(client: TestClient):
 
     # Reviewer can approve
     rev_approve = client.post(
-        f"/api/plan/lines/{line_id}/approve",
+        f"/api/v1/plan/lines/{line_id}/approve",
         headers={"X-Role": "reviewer"},
     )
     assert rev_approve.status_code == 200
@@ -285,7 +286,7 @@ def test_quick_edit_w1_stock_reduces_by_20_percent_raises_unmet_and_does_not_cre
 
     # 2. Call quick-edit override endpoint: stock_percent = -20.0
     override_res = client.post(
-        "/api/scenario/override",
+        "/api/v1/scenario/override",
         json={
             "source_id": "W1",
             "stock_percent": -20.0,
@@ -313,10 +314,26 @@ def test_quick_edit_w1_stock_reduces_by_20_percent_raises_unmet_and_does_not_cre
     assert after_unmet >= before_unmet, f"Unmet cartons should raise or stay same, got before={before_unmet}, after={after_unmet}"
 
     # 5. Check audit trail logged the OVERRIDE action
-    audit_res = client.get("/api/audit")
+    audit_res = client.get("/api/v1/audit")
     assert audit_res.status_code == 200
     logs = audit_res.json()
     ov_log = next((l for l in logs if l["action"] == "OVERRIDE"), None)
     assert ov_log is not None
     assert "W1" in ov_log["new_value"]
     assert "-20" in ov_log["new_value"]
+
+
+def test_force_heuristic_fallback(client: TestClient):
+    """Verify POST /api/v1/plan?force_heuristic=true triggers heuristic fallback."""
+    response = client.post("/api/v1/plan?force_heuristic=true", headers={"X-Role": "planner"})
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["status"] == "HEURISTIC"
+    assert data["solver_status"] == "FALLBACK_HEURISTIC"
+
+    # Verify GET /api/v1/plan/latest also exposes solver_status
+    latest_res = client.get("/api/v1/plan/latest")
+    assert latest_res.status_code == 200
+    latest_data = latest_res.json()
+    assert latest_data["status"] == "HEURISTIC"
+    assert latest_data["solver_status"] == "FALLBACK_HEURISTIC"

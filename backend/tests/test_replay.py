@@ -1,6 +1,6 @@
 """
 VyaparMitra - Walk-Forward Replay & Benchmark Test Suite
-Team Stark | Triwizathon 2026 | PS2: Distribution Intelligence and Inventory Optimization Engine
+Distribution Planning and Inventory Optimization Engine
 
 Tests:
   1. Replay is deterministic for a seed (same seed produces identical results).
@@ -211,22 +211,22 @@ def test_headroom_rule_exclusion():
 # 5. API Endpoints
 # =====================================================================
 def test_api_evaluate_endpoints(client):
-    """Test /api/evaluate, /api/evaluate/rerun, and /api/evaluate/status endpoints."""
-    # 1. GET /api/evaluate/status
-    resp_status = client.get("/api/evaluate/status")
+    """Test /api/v1/evaluate, /api/v1/evaluate/rerun, and /api/v1/evaluate/status endpoints."""
+    # 1. GET /api/v1/evaluate/status
+    resp_status = client.get("/api/v1/evaluate/status")
     assert resp_status.status_code == 200
     data_status = resp_status.json()
     assert "status" in data_status
     assert "progress" in data_status
 
-    # 2. GET /api/evaluate
-    resp_eval = client.get("/api/evaluate")
+    # 2. GET /api/v1/evaluate
+    resp_eval = client.get("/api/v1/evaluate")
     assert resp_eval.status_code == 200
     data_eval = resp_eval.json()
     assert isinstance(data_eval, dict)
 
-    # 3. POST /api/evaluate/rerun
-    resp_rerun = client.post("/api/evaluate/rerun")
+    # 3. POST /api/v1/evaluate/rerun
+    resp_rerun = client.post("/api/v1/evaluate/rerun")
     assert resp_rerun.status_code == 200
     data_rerun = resp_rerun.json()
     assert data_rerun["status"] in ["started", "already_running"]

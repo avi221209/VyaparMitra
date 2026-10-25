@@ -10,7 +10,6 @@ const PlanPage = lazy(() => import('./pages/PlanPage').then((m) => ({ default: m
 const ReviewPage = lazy(() => import('./pages/ReviewPage').then((m) => ({ default: m.ReviewPage })));
 const EvaluatePage = lazy(() => import('./pages/EvaluatePage').then((m) => ({ default: m.EvaluatePage })));
 const AuditPage = lazy(() => import('./pages/AuditPage').then((m) => ({ default: m.AuditPage })));
-const DesignSystemPage = lazy(() => import('./pages/DesignSystemPage').then((m) => ({ default: m.DesignSystemPage })));
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 
 const queryClient = new QueryClient({
@@ -61,8 +60,8 @@ function NotFoundPage() {
       <p className="text-body text-ink-3 max-w-sm mb-6">
         The requested screen does not exist. Return to the planning ledger.
       </p>
-      <Button variant="primary" onClick={() => (window.location.href = '/plan')}>
-        Go to Plan
+      <Button variant="primary" onClick={() => (window.location.href = '/')}>
+        Go to Home
       </Button>
     </div>
   );
@@ -119,14 +118,6 @@ export function App() {
               element={
                 <PageWrapper title="Decision Log and Audit Trail">
                   <AuditPage />
-                </PageWrapper>
-              }
-            />
-            <Route
-              path="/design"
-              element={
-                <PageWrapper title="Design System Specifications">
-                  <DesignSystemPage />
                 </PageWrapper>
               }
             />

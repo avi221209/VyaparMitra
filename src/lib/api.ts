@@ -32,8 +32,14 @@ export async function apiFetch<T>(
     headers.set('Content-Type', 'application/json');
   }
 
+  // Enforce /api/v1/ prefix for all endpoints
+  let finalUrl = url;
+  if (finalUrl.startsWith('/api/') && !finalUrl.startsWith('/api/v1/')) {
+    finalUrl = finalUrl.replace('/api/', '/api/v1/');
+  }
+
   try {
-    const response = await fetch(url, {
+    const response = await fetch(finalUrl, {
       ...options,
       headers,
     });

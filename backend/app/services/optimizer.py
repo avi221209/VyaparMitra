@@ -1,6 +1,6 @@
 """
 VyaparMitra - Two-Stage Deterministic Integer Programming Optimizer (PuLP + CBC)
-Team Stark | Triwizathon 2026 | PS2: Distribution Intelligence and Inventory Optimization Engine
+Distribution Planning and Inventory Optimization Engine
 
 Pure core optimization engine with CBC MILP solver and Greedy Heuristic fallback (Baseline C).
 

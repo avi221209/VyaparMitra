@@ -1,6 +1,6 @@
 # VyaparMitra (व्यापारमित्र)
 ### Distribution Intelligence & Inventory Optimization Engine
-**Team Stark | Triwizathon 2026 | Problem Statement 2 (PS2)**
+**Production-Grade Decision Support for Regional FMCG Distribution**
 
 ---
 

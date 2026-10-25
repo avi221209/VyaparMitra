@@ -1,6 +1,6 @@
 """
 VyaparMitra - Distribution Plan Rule Checker Service
-Team Stark | Triwizathon 2026 | PS2: Distribution Intelligence and Inventory Optimization Engine
+Distribution Planning and Inventory Optimization Engine
 
 Validates proposed distribution plans or human edits against C1 to C6 and requirement limits:
  C1 Stock: sum_d y[b, d] <= batch.quantity - planner_reserve

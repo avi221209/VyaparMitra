@@ -1,0 +1,25 @@
+{
+  "generator": "VyaparMitra FMCG Simulator",
+  "seed": 1,
+  "scenario": "balanced",
+  "variant": "normal",
+  "base_date": "2026-10-24",
+  "generated_at": "2026-10-24T22:41:11.825003+00:00",
+  "is_simulated": true,
+  "counts": {
+    "locations": 6,
+    "warehouses": 2,
+    "destinations": 4,
+    "products": 24,
+    "lanes": 8,
+    "batches": 96,
+    "inventory_snapshots": 96,
+    "sales_daily": 11520,
+    "validation_issues": 0
+  },
+  "tight_lanes": [
+    "LANE-W1-D2",
+    "LANE-W2-S2"
+  ],
+  "defect_manifest": []
+}

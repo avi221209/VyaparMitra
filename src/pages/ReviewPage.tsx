@@ -61,7 +61,7 @@ export function ReviewPage() {
     queryKey: ['latest-plan'],
     queryFn: async () => {
       try {
-        return await apiFetch<any>('/api/plan/latest');
+        return await apiFetch<any>('/api/v1/plan/latest');
       } catch (err: any) {
         if (err.status === 404) return null;
         throw err;
@@ -72,12 +72,12 @@ export function ReviewPage() {
   // Fetch products and locations
   const { data: products = [] } = useQuery({
     queryKey: ['products'],
-    queryFn: () => apiFetch<any[]>('/api/products'),
+    queryFn: () => apiFetch<any[]>('/api/v1/products'),
   });
 
   const { data: locations = [] } = useQuery({
     queryKey: ['locations'],
-    queryFn: () => apiFetch<any[]>('/api/locations'),
+    queryFn: () => apiFetch<any[]>('/api/v1/locations'),
   });
 
   const productNameMap = useMemo(() => {
@@ -100,7 +100,7 @@ export function ReviewPage() {
   const bulkApproveMutation = useMutation({
     mutationFn: async (linesToApprove: any[]) => {
       for (const line of linesToApprove) {
-        await apiFetch(`/api/plan/lines/${line.id}/approve`, {
+        await apiFetch(`/api/v1/plan/lines/${line.id}/approve`, {
           method: 'POST',
         });
       }
