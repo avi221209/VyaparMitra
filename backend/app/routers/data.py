@@ -237,6 +237,9 @@ async def upload_csv_file(
     session.add(log)
     session.commit()
 
+    from backend.app.routers.dashboard import invalidate_dashboard_cache
+    invalidate_dashboard_cache()
+
     return {
         "status": "success",
         "table": canonical_name,

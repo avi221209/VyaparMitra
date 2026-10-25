@@ -335,11 +335,13 @@ def create_plan(
                 except Exception:
                     pass
 
-    # Fetch updated PlanRun and persisted lines from DB
     plan_run_updated = session.get(PlanRun, result.run_id) or result
     persisted_lines = session.exec(
         select(PlanLine).where(PlanLine.run_id == result.run_id).order_by(PlanLine.id)  # type: ignore
     ).all()
+
+    from backend.app.routers.dashboard import invalidate_dashboard_cache
+    invalidate_dashboard_cache()
 
     return {
         "run_id": result.run_id,
@@ -987,6 +989,9 @@ def approve_plan_line(
     session.add(log_entry)
     session.commit()
 
+    from backend.app.routers.dashboard import invalidate_dashboard_cache
+    invalidate_dashboard_cache()
+
     return {
         "status": "success",
         "action": "APPROVE",
@@ -1052,6 +1057,9 @@ def reject_plan_line(
     )
     session.add(log_entry)
     session.commit()
+
+    from backend.app.routers.dashboard import invalidate_dashboard_cache
+    invalidate_dashboard_cache()
 
     return {
         "status": "success",

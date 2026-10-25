@@ -56,6 +56,7 @@ from backend.app.routers.data import router as data_router
 from backend.app.routers.forecast import router as forecast_router
 from backend.app.routers.plan import router as plan_router
 from backend.app.routers.evaluate import router as evaluate_router
+from backend.app.routers.dashboard import router as dashboard_router
 
 # CORS Middleware
 app.add_middleware(
@@ -70,6 +71,7 @@ app.include_router(data_router)
 app.include_router(forecast_router)
 app.include_router(plan_router)
 app.include_router(evaluate_router)
+app.include_router(dashboard_router)
 
 
 def get_current_role(x_role: str = Header(default="planner")) -> str:

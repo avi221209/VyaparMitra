@@ -28,6 +28,10 @@ def init_db() -> None:
                     conn.exec_driver_sql("ALTER TABLE plan_run ADD COLUMN total_unmet_safety_stock_cartons INTEGER DEFAULT 0")
                 if "counterfactuals_json" not in cols:
                     conn.exec_driver_sql("ALTER TABLE plan_run ADD COLUMN counterfactuals_json TEXT")
+                conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS idx_plan_run_created_at ON plan_run(created_at)")
+                conn.commit()
+            if "sales_daily" in tables:
+                conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS idx_sales_daily_composite ON sales_daily(date, product_id, location_id)")
                 conn.commit()
 
     with Session(engine) as session:
