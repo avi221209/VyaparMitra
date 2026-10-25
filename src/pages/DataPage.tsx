@@ -11,7 +11,13 @@ import {
   EmptyState,
   useToast,
 } from '../components/ui';
-import { apiFetch, getApiUrl } from '../lib/api';
+import {
+  apiFetch,
+  getApiUrl,
+  getBackendBaseUrl,
+  setBackendBaseUrl,
+  isBackendConfigured,
+} from '../lib/api';
 import {
   AlertCircle,
   AlertTriangle,
@@ -43,6 +49,64 @@ export function DataPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadingName, setUploadingName] = useState('');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const [backendUrlInput, setBackendUrlInput] = useState(getBackendBaseUrl());
+  const [backendConnected, setBackendConnected] = useState(true);
+  const [isSavingUrl, setIsSavingUrl] = useState(false);
+
+  useEffect(() => {
+    const testConnection = async () => {
+      try {
+        const res = await apiFetch<any>('/api/v1/health');
+        setBackendConnected(res && res.status === 'healthy');
+      } catch {
+        setBackendConnected(false);
+      }
+    };
+    testConnection();
+
+    const handleReachable = () => setBackendConnected(true);
+    const handleUnreachable = () => setBackendConnected(false);
+    const handleUrlChange = (e: any) => {
+      setBackendUrlInput(e.detail || getBackendBaseUrl());
+      testConnection();
+      queryClient.invalidateQueries();
+    };
+
+    window.addEventListener('backend-reachable', handleReachable);
+    window.addEventListener('backend-unreachable', handleUnreachable);
+    window.addEventListener('backend-url-changed', handleUrlChange);
+
+    return () => {
+      window.removeEventListener('backend-reachable', handleReachable);
+      window.removeEventListener('backend-unreachable', handleUnreachable);
+      window.removeEventListener('backend-url-changed', handleUrlChange);
+    };
+  }, []);
+
+  const handleSaveBackendUrl = async (urlToSave: string) => {
+    setIsSavingUrl(true);
+    setBackendBaseUrl(urlToSave);
+    try {
+      const cleanUrl = urlToSave.trim().replace(/\/$/, '');
+      const testEndpoint = cleanUrl ? `${cleanUrl}/api/v1/health` : '/api/v1/health';
+      const res = await fetch(testEndpoint);
+      if (!res.ok) {
+        throw new Error(`Server returned HTTP ${res.status}`);
+      }
+      toast({ type: 'success', message: 'Backend connected successfully!' });
+      setBackendConnected(true);
+      queryClient.invalidateQueries();
+    } catch (err: any) {
+      toast({
+        type: 'info',
+        message: `Saved URL, but health check failed: ${err.message}. Retrying...`,
+      });
+      queryClient.invalidateQueries();
+    } finally {
+      setIsSavingUrl(false);
+    }
+  };
 
   // Fetch status to check if data exists
   const { data: statusData, isLoading: statusLoading } = useQuery({
@@ -133,6 +197,14 @@ export function DataPage() {
 
   const handleFileUpload = async (file: File) => {
     if (!file) return;
+
+    if (!isBackendConfigured()) {
+      toast({
+        type: 'error',
+        message: 'Backend service is not configured. Please enter your Render backend URL in the connection card above to connect.',
+      });
+      return;
+    }
 
     if (!file.name.toLowerCase().endsWith('.csv') && file.type !== 'text/csv') {
       toast({
@@ -422,6 +494,55 @@ export function DataPage() {
         </section>
       )}
 
+      {/* Backend Connection Alert & Quick Config */}
+      {!backendConnected && (
+        <section className="bg-surface border border-madder/40 rounded-control p-4.5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-full bg-madder-wash text-madder flex items-center justify-center shrink-0 mt-0.5">
+              <AlertTriangle className="w-5 h-5" strokeWidth={1.5} />
+            </div>
+            <div>
+              <h2 className="text-body font-semibold text-ink">Backend Not Connected</h2>
+              <p className="text-meta text-ink-3 mt-0.5 max-w-lg">
+                Enter your Render backend URL below to connect the API and enable CSV uploads, sample data, and automatic validation.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
+            <input
+              type="text"
+              placeholder="https://your-service.onrender.com"
+              value={backendUrlInput}
+              onChange={(e) => setBackendUrlInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSaveBackendUrl(backendUrlInput);
+              }}
+              className="px-3 py-1.5 text-xs bg-paper rounded border border-line text-ink font-mono focus:outline-none focus:ring-1 focus:ring-brand w-full sm:w-64"
+            />
+            <Button
+              variant="primary"
+              size="sm"
+              loading={isSavingUrl}
+              onClick={() => handleSaveBackendUrl(backendUrlInput)}
+              className="text-xs whitespace-nowrap"
+            >
+              Save & Connect
+            </Button>
+            <Button
+              variant="quiet"
+              size="sm"
+              onClick={() => {
+                setBackendUrlInput('http://127.0.0.1:8000');
+                handleSaveBackendUrl('http://127.0.0.1:8000');
+              }}
+              className="text-xs text-brand hover:underline"
+            >
+              Use Localhost
+            </Button>
+          </div>
+        </section>
+      )}
+
       {/* 1. DATA LOADING SECTION */}
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-surface border border-line rounded-control">
@@ -433,7 +554,16 @@ export function DataPage() {
           </div>
           <Button
             variant="secondary"
-            onClick={() => loadSampleMutation.mutate()}
+            onClick={() => {
+              if (!isBackendConfigured()) {
+                toast({
+                  type: 'error',
+                  message: 'Backend is not configured. Please enter your Render backend URL above to connect.',
+                });
+                return;
+              }
+              loadSampleMutation.mutate();
+            }}
             loading={loadSampleMutation.isPending}
             icon={<Database className="w-4 h-4 text-brand" strokeWidth={1.5} />}
           >

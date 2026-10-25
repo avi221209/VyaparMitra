@@ -51,6 +51,16 @@ export function setBackendBaseUrl(url: string): void {
   }
 }
 
+export function isBackendConfigured(): boolean {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return true;
+    }
+  }
+  return !!getBackendBaseUrl();
+}
+
 export function getApiUrl(path: string): string {
   let cleanPath = path;
   if (cleanPath.startsWith('/api/') && !cleanPath.startsWith('/api/v1/')) {
@@ -103,8 +113,23 @@ export async function apiFetch<T>(
       } catch {
         // ignore
       }
+
+      // Detect static host (e.g. Netlify) returning 404 for an API route because backend URL is not configured
+      const isStaticHost404 =
+        response.status === 404 &&
+        (!getBackendBaseUrl() ||
+          contentType.includes('text/html') ||
+          (typeof window !== 'undefined' && window.location.hostname.endsWith('netlify.app')));
+
+      if (isStaticHost404) {
+        errorDetail = `Backend service is not connected. Please enter your Render backend URL (e.g. https://your-service.onrender.com) in Settings or the connection box.`;
+      }
+
       const error = new Error(errorDetail) as any;
       error.status = response.status;
+      if (isStaticHost404) {
+        error.isUnreachable = true;
+      }
       throw error;
     }
 
@@ -145,7 +170,13 @@ export async function apiFetch<T>(
     }
   } catch (err: any) {
     if (typeof window !== 'undefined') {
-      if (err.name === 'TypeError' || err.message?.includes('fetch') || !err.status || err.isHtmlFallback) {
+      if (
+        err.name === 'TypeError' ||
+        err.message?.includes('fetch') ||
+        !err.status ||
+        err.isHtmlFallback ||
+        err.isUnreachable
+      ) {
         window.dispatchEvent(new CustomEvent('backend-unreachable'));
       }
     }
