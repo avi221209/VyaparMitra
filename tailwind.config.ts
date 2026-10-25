@@ -37,6 +37,7 @@ export default {
       },
       boxShadow: {
         overlay: 'var(--shadow-overlay)',
+        card: 'var(--shadow-card)',
       },
       fontFamily: {
         sans: ['var(--font-ui)'],

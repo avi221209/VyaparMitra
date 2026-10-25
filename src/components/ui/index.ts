@@ -12,5 +12,6 @@ export * from './InlineMessage';
 export * from './EmptyState';
 export * from './Skeleton';
 export * from './Popover';
+export * from './ErrorBoundary';
 export * from '../../lib/formatters';
 
