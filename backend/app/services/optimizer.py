@@ -369,7 +369,8 @@ def solve_two_stage_optimization(
     alpha = settings.alpha if settings else 0.25
     epsilon = settings.epsilon if settings else 0.001
     Eshort = settings.Eshort if settings else 21
-    time_limit = settings.solver_time_limit if settings else 10.0
+    total_time_limit = getattr(settings, "solver_time_limit", 5.0) or 5.0
+    stage_time_limit = max(1.0, min(float(total_time_limit) / 2.0, 2.4))
 
     # Deterministic sorting of entities (Rule 2)
     sorted_destinations = sorted(list(requirements.keys()))
@@ -540,8 +541,8 @@ def solve_two_stage_optimization(
     # Solve Stage 1 with CBC (single-threaded for Windows stability and determinism)
     cbc_solver = pulp.PULP_CBC_CMD(
         msg=False,
-        timeLimit=time_limit,
-        gapRel=0.0,
+        timeLimit=stage_time_limit,
+        gapRel=0.005,
     )
 
     try:
@@ -786,7 +787,7 @@ class OptimizationService:
     ) -> OptimizationResult:
         """Run complete two-stage distribution optimization pipeline and persist results."""
         effective_date = plan_date or dt_date(2026, 10, 24)
-        run_id = f"PLAN-{effective_date.strftime('%Y%m%d')}-{int(time.time())}"
+        run_id = f"PLAN-{effective_date.strftime('%Y%m%d')}-{int(time.time() * 1000)}"
         reserve = planner_reserve_override if planner_reserve_override is not None else self.settings.planner_reserve
 
         # 1. Load network master data

@@ -16,6 +16,7 @@ from backend.app.db import get_session
 from backend.app.models import (
     Batch,
     DecisionLog,
+    ForecastResult,
     InventorySnapshot,
     Lane,
     Location,
@@ -132,27 +133,6 @@ def build_domain_context(session: Session, as_of: dt_date, settings: Settings):
     batches_db = list(session.exec(select(Batch)).all())
     snapshots_db = list(session.exec(select(InventorySnapshot)).all())
 
-    pos_map: Dict[str, Dict[str, float]] = {}
-    res_map: Dict[str, Dict[str, float]] = {}
-    transit_map: Dict[str, Dict[str, float]] = {}
-    for s in snapshots_db:
-        pos_map.setdefault(s.location_id, {})[s.product_id] = float(s.on_hand)
-        res_map.setdefault(s.location_id, {})[s.product_id] = float(s.reserved)
-        transit_map.setdefault(s.location_id, {})[s.product_id] = float(s.in_transit)
-
-    fc_service = ForecastService(session)
-    fc_results = fc_service.fit_and_select_all(as_of=as_of, horizon=settings.H)
-    fc_mean_map: Dict[str, Dict[str, float]] = {}
-    fc_sigma_map: Dict[str, Dict[str, float]] = {}
-    daily_fc_map: Dict[str, Dict[str, List[float]]] = {}
-
-    for r in fc_results:
-        d = r["location_id"]
-        p = r["product_id"]
-        fc_mean_map.setdefault(d, {})[p] = float(sum(r["daily_forecast"]) / len(r["daily_forecast"]))
-        fc_sigma_map.setdefault(d, {})[p] = float(r["sigma"])
-        daily_fc_map.setdefault(d, {})[p] = r["daily_forecast"]
-
     lanes_pure = [
         LaneData(
             source_id=l.source_id,
@@ -191,6 +171,41 @@ def build_domain_context(session: Session, as_of: dt_date, settings: Settings):
         )
         for b in batches_db
     ]
+
+    pos_map: Dict[str, Dict[str, float]] = {}
+    res_map: Dict[str, Dict[str, float]] = {}
+    transit_map: Dict[str, Dict[str, float]] = {}
+    for s in snapshots_db:
+        pos_map.setdefault(s.location_id, {})[s.product_id] = float(s.on_hand)
+        res_map.setdefault(s.location_id, {})[s.product_id] = float(s.reserved)
+        transit_map.setdefault(s.location_id, {})[s.product_id] = float(s.in_transit)
+
+    cached_fc = list(
+        session.exec(
+            select(ForecastResult).where(ForecastResult.as_of_date == as_of)
+        ).all()
+    )
+    fc_mean_map: Dict[str, Dict[str, float]] = {}
+    fc_sigma_map: Dict[str, Dict[str, float]] = {}
+    daily_fc_map: Dict[str, Dict[str, List[float]]] = {}
+
+    if cached_fc:
+        for r in cached_fc:
+            d = r.location_id
+            p = r.product_id
+            dfc = json.loads(r.daily_forecast_json) if r.daily_forecast_json else [0.0]
+            fc_mean_map.setdefault(d, {})[p] = float(sum(dfc) / len(dfc)) if dfc else 0.0
+            fc_sigma_map.setdefault(d, {})[p] = float(r.sigma)
+            daily_fc_map.setdefault(d, {})[p] = dfc
+    else:
+        fc_service = ForecastService(session)
+        fc_results = fc_service.fit_and_select_all(as_of=as_of, horizon=settings.H, persist=False)
+        for r in fc_results:
+            d = r["location_id"]
+            p = r["product_id"]
+            fc_mean_map.setdefault(d, {})[p] = float(sum(r["daily_forecast"]) / len(r["daily_forecast"]))
+            fc_sigma_map.setdefault(d, {})[p] = float(r["sigma"])
+            daily_fc_map.setdefault(d, {})[p] = r["daily_forecast"]
 
     req_lanes = [
         LaneInfo(

@@ -58,6 +58,17 @@ from backend.app.routers.plan import router as plan_router
 from backend.app.routers.evaluate import router as evaluate_router
 from backend.app.routers.dashboard import router as dashboard_router
 
+from starlette.requests import Request
+
+@app.middleware("http")
+async def rewrite_api_v1_middleware(request: Request, call_next):
+    """Rewrite legacy /api/* calls to canonical /api/v1/* routes."""
+    path = request.url.path
+    if path.startswith("/api/") and not path.startswith("/api/v1/"):
+        request.scope["path"] = "/api/v1" + path[4:]
+    return await call_next(request)
+
+
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
@@ -87,6 +98,19 @@ def get_current_role(x_role: str = Header(default="planner")) -> str:
             detail=f"Invalid X-Role '{x_role}'. Allowed demo roles: {sorted(list(valid_roles))}",
         )
     return cleaned_role
+
+
+@app.post("/api/v1/seed/reset", tags=["System"])
+def reset_seed_endpoint(
+    session: Session = Depends(get_session),
+    role: str = Depends(get_current_role),
+) -> dict:
+    """Reset database to canonical normal variant."""
+    sim = FMCGSimulator(seed=1, variant="normal", scenario="balanced")
+    res = sim.seed_database(session)
+    from backend.app.routers.dashboard import invalidate_dashboard_cache
+    invalidate_dashboard_cache()
+    return res
 
 
 # -------------------------------------------------------------------

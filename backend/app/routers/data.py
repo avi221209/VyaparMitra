@@ -22,6 +22,7 @@ from backend.app.models import (
     SalesDaily,
     ValidationIssue,
 )
+from backend.app.services.simulator import FMCGSimulator
 from backend.app.services.validation import (
     DataValidator,
     acknowledge_validation_issue,
@@ -462,8 +463,24 @@ async def upload_csv_file(
 
 
 # -------------------------------------------------------------------
-# 3. Load Sample Dataset from data/sample/
+# 3. Load Sample Dataset & Seed Simulator
 # -------------------------------------------------------------------
+@router.post("/seed")
+def seed_dataset(
+    variant: str = Query(default="normal"),
+    scenario: str = Query(default="balanced"),
+    seed: int = Query(default=1),
+    session: Session = Depends(get_session),
+    role: str = Depends(get_current_role),
+) -> dict:
+    """Seed database with specified variant ('normal' or 'defects') and scenario."""
+    sim = FMCGSimulator(seed=seed, variant=variant, scenario=scenario)
+    res = sim.seed_database(session)
+    from backend.app.routers.dashboard import invalidate_dashboard_cache
+    invalidate_dashboard_cache()
+    return res
+
+
 @router.post("/sample")
 def load_sample_dataset(
     session: Session = Depends(get_session),

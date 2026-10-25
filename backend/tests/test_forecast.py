@@ -169,12 +169,16 @@ def test_zero_heavy_series_uses_poisson_fallback():
     assert sigma == pytest.approx(expected_sigma, abs=1e-5)
 
 
+from backend.app.services.simulator import FMCGSimulator
+
+
 # =====================================================================
 # 5. Integration: API Endpoints POST /run and GET /{product}/{location}
 # =====================================================================
-def test_forecast_api_run_and_get():
+def test_forecast_api_run_and_get(client: TestClient, session: Session):
     """Test POST /api/forecast/run and GET /api/forecast/{product}/{location}."""
-    client = TestClient(app)
+    sim = FMCGSimulator(seed=1, variant="normal", scenario="balanced")
+    sim.seed_database(session)
 
     # 1. Run forecast engine for all series
     run_resp = client.post("/api/v1/forecast/run")
