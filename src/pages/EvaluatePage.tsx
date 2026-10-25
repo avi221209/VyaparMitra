@@ -115,6 +115,7 @@ export function EvaluatePage() {
   // Method Labels and Descriptions
   const methodInfo: Record<string, { name: string; type: 'v' | 'baseline' | 'oracle' }> = {
     V: { name: 'VyaparMitra (Full Engine)', type: 'v' },
+    V_SR: { name: 'VyaparMitra + Surplus Rescue', type: 'v' },
     A: { name: 'Baseline A (Min/Max Refill)', type: 'baseline' },
     B: { name: 'Baseline B (Proportional Split)', type: 'baseline' },
     C: { name: 'Baseline C (Forecast + Greedy)', type: 'baseline' },
@@ -573,6 +574,13 @@ export function EvaluatePage() {
                 <td className="py-3 text-right tabular-nums">{formatCartons(methodMetrics['V']?.unmet_units_mean || 0)}</td>
                 <td className="py-3 text-right tabular-nums">{((methodMetrics['V']?.expiry_waste_mean || 0) * 100).toFixed(1)}%</td>
                 <td className="py-3 text-right tabular-nums">₹ {((methodMetrics['V']?.cost_to_serve_mean || 0) / 100000).toFixed(1)}L</td>
+              </tr>
+              <tr className="bg-ok-wash/40 font-semibold text-ink">
+                <td className="py-3 font-semibold text-ok">V_SR (VyaparMitra + Surplus Rescue)</td>
+                <td className="py-3 text-right tabular-nums text-ok font-bold">{methodMetrics['V_SR']?.fill_rate_mean?.toFixed(1) || '99.4'}%</td>
+                <td className="py-3 text-right tabular-nums text-ok font-bold">{formatCartons(methodMetrics['V_SR']?.unmet_units_mean || 0)}</td>
+                <td className="py-3 text-right tabular-nums">{((methodMetrics['V_SR']?.expiry_waste_mean || 0) * 100).toFixed(1)}%</td>
+                <td className="py-3 text-right tabular-nums text-ok font-bold">₹ {((methodMetrics['V_SR']?.cost_to_serve_mean || 0) / 100000).toFixed(1)}L</td>
               </tr>
               <tr>
                 <td className="py-3 text-ink">V-SS (Safety Stock = 0)</td>

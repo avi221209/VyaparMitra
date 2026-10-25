@@ -988,6 +988,20 @@ class OptimizationService:
                         } if r.lane_capacity_fix else None,
                     },
                 })
+        elif opt_result.total_unmet_demand_cartons > 0:
+            for (d_id, p_id), unmet_dict in opt_result.unmet_by_destination_product.items():
+                udem = unmet_dict.get("udem", 0)
+                uss = unmet_dict.get("uss", 0)
+                if udem > 0 or uss > 0:
+                    cf_serialized.append({
+                        "destination_id": d_id,
+                        "product_id": p_id,
+                        "udem": udem,
+                        "uss": uss,
+                        "binding_constraint": "stock",
+                        "explanation": f"Unmet demand of {udem} cartons at {d_id} for {p_id}.",
+                        "fixes": {},
+                    })
 
         # 7. Persist PlanRun and PlanLines into DB
         self.persist_plan(

@@ -143,6 +143,47 @@ class ValidationIssue(SQLModel, table=True):
     is_simulated: bool = Field(default=True)
 
 
+class SurplusListing(SQLModel, table=True):
+    """
+    Surplus stock batch listing available for peer distributor or secondary depot rescue.
+    """
+    __tablename__ = "surplus_listing"
+
+    id: str = Field(primary_key=True, description="Listing ID (e.g. SURPLUS-P1-SKU-P01)")
+    source_id: str = Field(index=True, description="Seller location ID (e.g. P1, S1, P2)")
+    source_name: str = Field(description="Display name e.g. Peer Godown P1, Secondary Depot S1")
+    product_id: str = Field(foreign_key="product.id", index=True)
+    batch_id: str = Field(description="Batch identifier")
+    on_hand: int = Field(default=0, description="Gross cartons in stock")
+    reserved: int = Field(default=0, description="Cartons already promised")
+    seller_daily_forecast: float = Field(default=0.0, description="Seller's own daily sales rate")
+    seller_sigma: float = Field(default=0.0, description="Seller's demand uncertainty standard deviation")
+    protection_days: int = Field(default=7, description="Days of seller consumption to ring-fence")
+    expiry_date: dt_date = Field(description="Batch expiration date")
+    lead_time_days_by_dest: str = Field(default="{}", description="JSON dict mapping destination_id -> lead_time_days")
+    freight_per_carton_by_dest: str = Field(default="{}", description="JSON dict mapping destination_id -> freight_inr")
+    seller_unit_cost: float = Field(default=0.0, description="Seller acquisition cost per carton")
+    salvage_value_per_carton: float = Field(default=0.0, description="Seller scrap/clearance salvage value per carton")
+    regular_supplier_lead_time: int = Field(default=4, description="Regular factory lead time in days")
+    regular_supplier_cost_per_carton: float = Field(default=0.0, description="Regular supplier price per carton")
+    is_simulated: bool = Field(default=True)
+
+    def get_lead_time_dict(self) -> dict[str, int]:
+        import json
+        try:
+            return json.loads(self.lead_time_days_by_dest)
+        except Exception:
+            return {}
+
+    def get_freight_dict(self) -> dict[str, float]:
+        import json
+        try:
+            return json.loads(self.freight_per_carton_by_dest)
+        except Exception:
+            return {}
+
+
+
 class DecisionLog(SQLModel, table=True):
     """Immutable audit log of human approval/edit/reject actions."""
     __tablename__ = "decision_log"

@@ -352,6 +352,39 @@ class WalkForwardReplay:
                     sales_cache=sales_history_strictly_before,
                     settings=self.settings,
                 )
+            elif method == "V_SR":
+                alloc_lines, _ = solve_v(
+                    plan_date=cycle_start,
+                    destinations=self.destinations,
+                    products=self.products,
+                    lanes=lanes_pure,
+                    batches=active_wh_batches,
+                    destination_inventory=dest_cartons_on_hand,
+                    sales_cache=sales_history_strictly_before,
+                    settings=self.settings,
+                )
+                # Simulate peer surplus rescue for unmet destination requirements
+                sim_surplus = FMCGSimulator(seed=self.seed, base_date=cycle_start).generate_surplus_listings()
+                for surp in sim_surplus:
+                    verified_spare = max(0, surp.on_hand - math.ceil(surp.seller_daily_forecast * 7 + 1.65 * surp.seller_sigma * 2.646))
+                    if verified_spare > 0:
+                        for d in self.destinations:
+                            lt = surp.get_lead_time_dict().get(d.id, 99)
+                            if lt <= 2:
+                                rescue_cartons = min(15, verified_spare)
+                                if rescue_cartons > 0:
+                                    alloc_lines.append(
+                                        AllocationLine(
+                                            batch_id=surp.batch_id,
+                                            source_id=surp.source_id,
+                                            destination_id=d.id,
+                                            product_id=surp.product_id,
+                                            cartons=rescue_cartons,
+                                            cost=round(rescue_cartons * surp.get_freight_dict().get(d.id, 15.0), 2),
+                                            arrival_date=cycle_start + timedelta(days=lt),
+                                        )
+                                    )
+                                    verified_spare -= rescue_cartons
             elif method == "V-SS":
                 alloc_lines, _ = solve_v_ss(
                     plan_date=cycle_start,
@@ -609,7 +642,7 @@ class EvaluationEngine:
     def __init__(self, seeds: Optional[List[int]] = None):
         self.seeds = seeds or [1, 2, 3, 4, 5]
         self.scenarios = ["scarce", "balanced", "abundant"]
-        self.methods = ["A", "B", "C", "V", "V-SS", "V-SL", "O"]
+        self.methods = ["A", "B", "C", "V", "V_SR", "V-SS", "V-SL", "O"]
 
     def run_all(self, progress_callback: Optional[Any] = None) -> Dict[str, Any]:
         """Run complete walk-forward replay matrix and generate aggregated report."""

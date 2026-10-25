@@ -12,6 +12,7 @@ import {
   formatINR,
   formatCartons,
   formatDate,
+  formatDays,
 } from '../components/ui';
 import { NetworkStrip } from '../components/plan/NetworkStrip';
 import { ForecastDrawer } from '../components/plan/ForecastDrawer';
@@ -30,6 +31,7 @@ import {
   ArrowDown,
   Eye,
   SlidersHorizontal,
+  ShieldAlert,
 } from 'lucide-react';
 
 export function PlanPage() {
@@ -85,6 +87,7 @@ export function PlanPage() {
   });
 
   const [isOrchestrating, setIsOrchestrating] = useState<boolean>(false);
+  const [rescueDrawerContext, setRescueDrawerContext] = useState<any | null>(null);
 
   // Sync state to URL and localStorage
   const updateUrlParams = useCallback(
@@ -299,29 +302,36 @@ export function PlanPage() {
   const handleWhatIfRegenerate = async (payload: any): Promise<ChangeSummary | null> => {
     const beforeTransport = planData?.totals?.transport_cost || 0;
     const beforeUnmet = planData?.totals?.unmet_demand_cartons || 0;
+    const beforeCostToServe = planData?.totals?.total_cost || (beforeTransport + (beforeUnmet * 20.0 * 50.0));
 
     try {
-      await apiFetch('/api/scenario/override', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
+      if (payload.source_overrides || payload.destination_overrides) {
+        await apiFetch('/api/scenario/override', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+      }
 
       const newPlan = await generatePlanMutation.mutateAsync(payload);
 
       const afterTransport = newPlan?.totals?.transport_cost || 0;
       const afterUnmet = newPlan?.totals?.unmet_demand_cartons || 0;
+      const afterCostToServe = newPlan?.totals?.total_cost || (afterTransport + (afterUnmet * 20.0 * 50.0));
 
       return {
         before: {
           transport_cost: beforeTransport,
           unmet_demand_cartons: beforeUnmet,
+          cost_to_serve: beforeCostToServe,
         },
         after: {
           transport_cost: afterTransport,
           unmet_demand_cartons: afterUnmet,
+          cost_to_serve: afterCostToServe,
         },
         diff_unmet_cartons: afterUnmet - beforeUnmet,
         diff_transport_cost: afterTransport - beforeTransport,
+        diff_cost_to_serve: afterCostToServe - beforeCostToServe,
       };
     } catch (err: any) {
       toast({ type: 'error', message: err.message || 'What-if regeneration failed' });
@@ -332,6 +342,7 @@ export function PlanPage() {
   const rawLines = planData?.lines || [];
   const totals = planData?.totals || {};
   const unmetPanel = planData?.unmet_panel || [];
+  const deadStockWarnings = planData?.dead_stock_warnings || [];
   const hasPlan = Boolean(planData && rawLines.length > 0);
 
   // Available filter options
@@ -1234,31 +1245,145 @@ export function PlanPage() {
                   <th className="py-2 pr-4 text-right">Unmet cartons</th>
                   <th className="py-2 pr-4 text-right">Safety-stock gap</th>
                   <th className="py-2 pr-4">Binding constraint</th>
-                  <th className="py-2">Smallest fix and extra transport</th>
+                  <th className="py-2 pr-4">Shortfall rescue</th>
+                  <th className="py-2 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
-                {unmetPanel.map((item: any, idx: number) => (
+                {unmetPanel.map((item: any, idx: number) => {
+                  const rescue = item.rescue_analysis;
+                  const hasFix = rescue?.best_source_name && rescue?.best_rescuable_cartons > 0;
+                  return (
+                    <tr key={idx} className="hover:bg-paper/50">
+                      <td className="py-2.5 pr-4 font-medium text-ink">
+                        {locationNameMap[item.destination_id] || item.destination_id}
+                      </td>
+                      <td className="py-2.5 pr-4 font-medium text-ink">
+                        {productNameMap[item.product_id] || item.product_id}
+                      </td>
+                      <td className="py-2.5 pr-4 text-right text-madder font-semibold tabular-nums">
+                        {formatCartons(item.unmet_demand_cartons)}
+                      </td>
+                      <td className="py-2.5 pr-4 text-right text-turmeric font-semibold tabular-nums">
+                        {formatCartons(item.safety_stock_gap_cartons)}
+                      </td>
+                      <td className="py-2.5 pr-4">
+                        <Badge variant="turmeric">
+                          {item.binding_constraint || 'Stock'}
+                        </Badge>
+                      </td>
+                      <td className="py-2.5 pr-4 text-meta">
+                        {hasFix ? (
+                          <div>
+                            <span className="font-semibold text-brand">
+                              {rescue.best_source_name}: {rescue.best_rescuable_cartons} cartons
+                            </span>
+                            {rescue.estimated_rupee_savings > 0 && (
+                              <span className="text-ok font-medium block">
+                                saves {formatINR(rescue.estimated_rupee_savings)}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-ink-3">
+                            {rescue?.summary || '0 spare cartons available'}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 text-right">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => {
+                            setRescueDrawerContext({
+                              runId: planData.run_id,
+                              destinationId: item.destination_id,
+                              destinationName: locationNameMap[item.destination_id] || item.destination_id,
+                              productId: item.product_id,
+                              productName: productNameMap[item.product_id] || item.product_id,
+                              unmetCartons: item.unmet_demand_cartons,
+                              rescueAnalysis: rescue,
+                            });
+                          }}
+                        >
+                          Inspect rescue
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {/* 7. DEAD-STOCK EARLY WARNING LEDGER BAND (TURMERIC LEFT RULE) */}
+      {deadStockWarnings.length > 0 && (
+        <section className="border-y border-r border-line border-l-4 border-l-turmeric bg-surface p-5 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-turmeric" strokeWidth={1.5} />
+              <div>
+                <h3 className="text-section font-serif font-semibold text-ink">
+                  Dead-stock early warnings
+                </h3>
+                <span className="text-meta text-ink-3">
+                  Aging warehouse stock exceeding projected demand before expiry
+                </span>
+              </div>
+            </div>
+            <span className="text-meta text-ink-2 tabular-nums font-medium">
+              {deadStockWarnings.length} batch{deadStockWarnings.length === 1 ? '' : 'es'} at risk
+            </span>
+          </div>
+
+          <div className="w-full overflow-x-auto">
+            <table className="w-full text-left border-collapse text-body font-sans">
+              <thead>
+                <tr className="border-b border-line text-meta font-medium text-ink-2">
+                  <th className="py-2 pr-4">Batch</th>
+                  <th className="py-2 pr-4">Location</th>
+                  <th className="py-2 pr-4">Product</th>
+                  <th className="py-2 pr-4 text-right">Days left</th>
+                  <th className="py-2 pr-4 text-right">Projected stranded</th>
+                  <th className="py-2 pr-4 text-right">Value at risk</th>
+                  <th className="py-2 text-right">Recommended action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {deadStockWarnings.map((w: any, idx: number) => (
                   <tr key={idx} className="hover:bg-paper/50">
-                    <td className="py-2.5 pr-4 font-medium text-ink">
-                      {locationNameMap[item.destination_id] || item.destination_id}
+                    <td className="py-2.5 pr-4 font-mono text-meta font-semibold text-ink">
+                      {w.batch_id}
+                    </td>
+                    <td className="py-2.5 pr-4 text-meta text-ink">
+                      {locationNameMap[w.location_id] || w.location_id}
                     </td>
                     <td className="py-2.5 pr-4 font-medium text-ink">
-                      {productNameMap[item.product_id] || item.product_id}
+                      {productNameMap[w.product_id] || w.product_id}
                     </td>
-                    <td className="py-2.5 pr-4 text-right text-madder font-semibold tabular-nums">
-                      {formatCartons(item.unmet_demand_cartons)}
+                    <td className="py-2.5 pr-4 text-right text-meta tabular-nums text-ink-2">
+                      {formatDays(w.days_to_expiry)}
                     </td>
                     <td className="py-2.5 pr-4 text-right text-turmeric font-semibold tabular-nums">
-                      {formatCartons(item.safety_stock_gap_cartons)}
+                      {formatCartons(w.stranded_cartons)}
                     </td>
-                    <td className="py-2.5 pr-4">
-                      <Badge variant="turmeric">
-                        {item.binding_constraint || 'Stock'}
+                    <td className="py-2.5 pr-4 text-right text-ink font-semibold tabular-nums">
+                      {formatINR(w.value_at_risk_inr)}
+                    </td>
+                    <td className="py-2.5 text-right">
+                      <Badge
+                        variant={
+                          w.recommended_action?.startsWith('Transfer')
+                            ? 'neutral'
+                            : w.recommended_action?.startsWith('List')
+                            ? 'turmeric'
+                            : 'neutral'
+                        }
+                      >
+                        {w.recommended_action}
                       </Badge>
-                    </td>
-                    <td className="py-2.5 text-meta text-ink-2">
-                      {item.smallest_fix || 'Supply replenishment required'}
                     </td>
                   </tr>
                 ))}
@@ -1279,10 +1404,14 @@ export function PlanPage() {
         allProducts={products}
       />
 
-      {/* Dispatch Slip Drawer (Phase 3 Signature Element) */}
+      {/* Dispatch Slip Drawer */}
       <DispatchSlipDrawer
         lineId={selectedLineId}
-        onClose={() => setSelectedLineId(null)}
+        rescueContext={rescueDrawerContext}
+        onClose={() => {
+          setSelectedLineId(null);
+          setRescueDrawerContext(null);
+        }}
         onLineUpdated={() => {
           refetchPlan();
         }}

@@ -6,13 +6,16 @@ export interface ChangeSummary {
   before: {
     transport_cost: number;
     unmet_demand_cartons: number;
+    cost_to_serve?: number;
   };
   after: {
     transport_cost: number;
     unmet_demand_cartons: number;
+    cost_to_serve?: number;
   };
   diff_unmet_cartons: number;
   diff_transport_cost: number;
+  diff_cost_to_serve?: number;
 }
 
 export interface WhatIfBarProps {
@@ -26,22 +29,21 @@ export function WhatIfBar({ onRegenerate, isGenerating }: WhatIfBarProps) {
   const [sourcePct, setSourcePct] = useState(-20); // Default minus 20%
   const [destinationId, setDestinationId] = useState('D1');
   const [demandMultiplier, setDemandMultiplier] = useState(1.2);
+  const [includeSurplus, setIncludeSurplus] = useState(false);
   const [changeSummary, setChangeSummary] = useState<ChangeSummary | null>(null);
 
   const handleApply = async () => {
-    let payload: any = {};
+    let payload: any = {
+      include_surplus: includeSurplus,
+    };
     if (overrideType === 'source') {
       const multiplier = (100 + sourcePct) / 100;
-      payload = {
-        source_overrides: {
-          [sourceId]: { mode: 'multiplier', value: multiplier },
-        },
+      payload.source_overrides = {
+        [sourceId]: { mode: 'multiplier', value: multiplier },
       };
     } else {
-      payload = {
-        destination_overrides: {
-          [destinationId]: { mode: 'multiplier', value: demandMultiplier },
-        },
+      payload.destination_overrides = {
+        [destinationId]: { mode: 'multiplier', value: demandMultiplier },
       };
     }
 
@@ -114,6 +116,19 @@ export function WhatIfBar({ onRegenerate, isGenerating }: WhatIfBarProps) {
               </div>
             </div>
           )}
+
+          {/* Include verified surplus toggle */}
+          <div className="h-4 w-px bg-line hidden sm:block" />
+          <label className="flex items-center gap-2 text-meta font-medium text-ink cursor-pointer select-none">
+            <input
+              type="checkbox"
+              id="toggle-include-surplus"
+              checked={includeSurplus}
+              onChange={(e) => setIncludeSurplus(e.target.checked)}
+              className="h-4 w-4 rounded border-line text-brand accent-brand focus:ring-brand"
+            />
+            <span>Include verified surplus</span>
+          </label>
         </div>
 
         <Button
@@ -126,10 +141,10 @@ export function WhatIfBar({ onRegenerate, isGenerating }: WhatIfBarProps) {
         </Button>
       </div>
 
-      {/* Change Summary Band: two aligned columns with differences written in words */}
+      {/* Change Summary Band: three aligned columns with differences written in words */}
       {changeSummary && (
         <div className="p-4 border-b border-line bg-surface flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 select-none">
-          <div className="grid grid-cols-2 gap-8 w-full sm:w-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 w-full sm:w-auto">
 
             {/* Unmet Units Column */}
             <div>
@@ -170,6 +185,29 @@ export function WhatIfBar({ onRegenerate, isGenerating }: WhatIfBarProps) {
                   : changeSummary.diff_transport_cost < 0
                   ? `${formatINR(Math.abs(changeSummary.diff_transport_cost))} transport cost saved`
                   : 'Transport cost unchanged'}
+              </span>
+            </div>
+
+            {/* Cost-to-Serve Column */}
+            <div>
+              <span className="text-meta text-ink-3 block">Total cost-to-serve change</span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="tabular-nums font-medium text-ink-2">
+                  {formatINR(changeSummary.before.cost_to_serve || 0)}
+                </span>
+                <span className="text-ink-3 text-meta">to</span>
+                <span className="tabular-nums font-semibold text-ink">
+                  {formatINR(changeSummary.after.cost_to_serve || 0)}
+                </span>
+              </div>
+              <span className="text-meta text-ink font-medium mt-1 block">
+                {changeSummary.diff_cost_to_serve !== undefined
+                  ? changeSummary.diff_cost_to_serve > 0
+                    ? `${formatINR(changeSummary.diff_cost_to_serve)} higher cost-to-serve`
+                    : changeSummary.diff_cost_to_serve < 0
+                    ? `${formatINR(Math.abs(changeSummary.diff_cost_to_serve))} saved in cost-to-serve`
+                    : 'Cost-to-serve unchanged'
+                  : '—'}
               </span>
             </div>
           </div>

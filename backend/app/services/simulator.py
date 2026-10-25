@@ -15,6 +15,7 @@ from backend.app.models import (
     Location,
     Product,
     SalesDaily,
+    SurplusListing,
     ValidationIssue,
 )
 
@@ -657,12 +658,280 @@ class FMCGSimulator:
 
         return products, locations, sales, lanes, batches, snapshots, issues
 
+    def generate_surplus_listings(self) -> List[SurplusListing]:
+        """
+        Deterministically seed 12 realistic SurplusListing records for peer distributor / secondary depot rescue.
+        Includes:
+          - Eligible surplus batches for shortfall rescue across staple, food, and personal care categories.
+          - At least 2 listings where on_hand > 0 but verified_spare_cartons == 0 due to seller's own forecast + safety stock.
+          - At least 2 listings that fail lead_time_gap > Gmax or remaining shelf life.
+        """
+        listings = [
+            # 1. Eligible rescue for S1/D1: Atta 5kg from Peer Godown P1
+            SurplusListing(
+                id="SURPLUS-P1-SKU-P01",
+                source_id="P1",
+                source_name="Peer Godown P1",
+                product_id="SKU-P01",
+                batch_id="BATCH-SURP-P01-01",
+                on_hand=120,
+                reserved=0,
+                seller_daily_forecast=4.0,
+                seller_sigma=1.0,
+                protection_days=7,
+                expiry_date=self.base_date + timedelta(days=60),
+                lead_time_days_by_dest=json.dumps({"D1": 2, "D2": 2, "S1": 1, "S2": 2}),
+                freight_per_carton_by_dest=json.dumps({"D1": 28.0, "D2": 25.0, "S1": 32.0, "S2": 30.0}),
+                seller_unit_cost=180.0,
+                salvage_value_per_carton=90.0,
+                regular_supplier_lead_time=4,
+                regular_supplier_cost_per_carton=180.0,
+                is_simulated=True,
+            ),
+            # 2. Eligible rescue for S2/D1: Instant Masala Noodles from Secondary Depot S1
+            SurplusListing(
+                id="SURPLUS-S1-SKU-P08",
+                source_id="S1_DEPOT",
+                source_name="Secondary Depot S1",
+                product_id="SKU-P08",
+                batch_id="BATCH-SURP-P08-01",
+                on_hand=65,
+                reserved=0,
+                seller_daily_forecast=3.0,
+                seller_sigma=0.8,
+                protection_days=7,
+                expiry_date=self.base_date + timedelta(days=45),
+                lead_time_days_by_dest=json.dumps({"D1": 3, "D2": 2, "S1": 1, "S2": 1}),
+                freight_per_carton_by_dest=json.dumps({"D1": 12.0, "D2": 8.0, "S1": 4.0, "S2": 5.0}),
+                seller_unit_cost=11.0,
+                salvage_value_per_carton=4.0,
+                regular_supplier_lead_time=3,
+                regular_supplier_cost_per_carton=11.0,
+                is_simulated=True,
+            ),
+            # 3. Eligible rescue for D2: Tomato Ketchup 500g from Peer Distributor P2
+            SurplusListing(
+                id="SURPLUS-P2-SKU-P09",
+                source_id="P2",
+                source_name="Peer Distributor P2",
+                product_id="SKU-P09",
+                batch_id="BATCH-SURP-P09-01",
+                on_hand=95,
+                reserved=0,
+                seller_daily_forecast=3.0,
+                seller_sigma=1.0,
+                protection_days=7,
+                expiry_date=self.base_date + timedelta(days=50),
+                lead_time_days_by_dest=json.dumps({"D1": 1, "D2": 2, "S1": 2, "S2": 2}),
+                freight_per_carton_by_dest=json.dumps({"D1": 15.0, "D2": 22.0, "S1": 25.0, "S2": 24.0}),
+                seller_unit_cost=85.0,
+                salvage_value_per_carton=35.0,
+                regular_supplier_lead_time=4,
+                regular_supplier_cost_per_carton=85.0,
+                is_simulated=True,
+            ),
+            # 4. Eligible rescue for S2: Herbal Toothpaste 150g from Peer Godown P1
+            SurplusListing(
+                id="SURPLUS-P1-SKU-P13",
+                source_id="P1",
+                source_name="Peer Godown P1",
+                product_id="SKU-P13",
+                batch_id="BATCH-SURP-P13-01",
+                on_hand=45,
+                reserved=0,
+                seller_daily_forecast=2.0,
+                seller_sigma=0.5,
+                protection_days=7,
+                expiry_date=self.base_date + timedelta(days=40),
+                lead_time_days_by_dest=json.dumps({"D1": 2, "D2": 2, "S1": 2, "S2": 1}),
+                freight_per_carton_by_dest=json.dumps({"D1": 18.0, "D2": 15.0, "S1": 20.0, "S2": 16.0}),
+                seller_unit_cost=75.0,
+                salvage_value_per_carton=30.0,
+                regular_supplier_lead_time=4,
+                regular_supplier_cost_per_carton=75.0,
+                is_simulated=True,
+            ),
+            # 5. Eligible rescue for D1: Toor Dal Premium 1kg from Peer Godown P1
+            SurplusListing(
+                id="SURPLUS-P1-SKU-P04",
+                source_id="P1",
+                source_name="Peer Godown P1",
+                product_id="SKU-P04",
+                batch_id="BATCH-SURP-P04-01",
+                on_hand=150,
+                reserved=0,
+                seller_daily_forecast=5.0,
+                seller_sigma=1.2,
+                protection_days=7,
+                expiry_date=self.base_date + timedelta(days=65),
+                lead_time_days_by_dest=json.dumps({"D1": 2, "D2": 2, "S1": 2, "S2": 2}),
+                freight_per_carton_by_dest=json.dumps({"D1": 25.0, "D2": 20.0, "S1": 28.0, "S2": 26.0}),
+                seller_unit_cost=130.0,
+                salvage_value_per_carton=60.0,
+                regular_supplier_lead_time=4,
+                regular_supplier_cost_per_carton=130.0,
+                is_simulated=True,
+            ),
+            # 6. Eligible rescue for S1/S2: Glucose Energy Biscuits from Secondary Depot S1
+            SurplusListing(
+                id="SURPLUS-S1-SKU-P06",
+                source_id="S1_DEPOT",
+                source_name="Secondary Depot S1",
+                product_id="SKU-P06",
+                batch_id="BATCH-SURP-P06-01",
+                on_hand=80,
+                reserved=0,
+                seller_daily_forecast=2.5,
+                seller_sigma=0.6,
+                protection_days=7,
+                expiry_date=self.base_date + timedelta(days=50),
+                lead_time_days_by_dest=json.dumps({"D1": 2, "D2": 2, "S1": 1, "S2": 1}),
+                freight_per_carton_by_dest=json.dumps({"D1": 10.0, "D2": 8.0, "S1": 4.0, "S2": 5.0}),
+                seller_unit_cost=15.0,
+                salvage_value_per_carton=6.0,
+                regular_supplier_lead_time=3,
+                regular_supplier_cost_per_carton=15.0,
+                is_simulated=True,
+            ),
+            # 7. Eligible rescue for S1: Daily Moisture Cream from Peer Distributor P2
+            SurplusListing(
+                id="SURPLUS-P2-SKU-P14",
+                source_id="P2",
+                source_name="Peer Distributor P2",
+                product_id="SKU-P14",
+                batch_id="BATCH-SURP-P14-01",
+                on_hand=60,
+                reserved=0,
+                seller_daily_forecast=2.0,
+                seller_sigma=0.5,
+                protection_days=7,
+                expiry_date=self.base_date + timedelta(days=45),
+                lead_time_days_by_dest=json.dumps({"D1": 1, "D2": 2, "S1": 2, "S2": 2}),
+                freight_per_carton_by_dest=json.dumps({"D1": 12.0, "D2": 18.0, "S1": 22.0, "S2": 20.0}),
+                seller_unit_cost=95.0,
+                salvage_value_per_carton=40.0,
+                regular_supplier_lead_time=4,
+                regular_supplier_cost_per_carton=95.0,
+                is_simulated=True,
+            ),
+            # 8. Eligible rescue for S1: Lime Dishwash Gel from Peer Godown P1
+            SurplusListing(
+                id="SURPLUS-P1-SKU-P17",
+                source_id="P1",
+                source_name="Peer Godown P1",
+                product_id="SKU-P17",
+                batch_id="BATCH-SURP-P17-01",
+                on_hand=70,
+                reserved=0,
+                seller_daily_forecast=2.2,
+                seller_sigma=0.6,
+                protection_days=7,
+                expiry_date=self.base_date + timedelta(days=55),
+                lead_time_days_by_dest=json.dumps({"D1": 2, "D2": 2, "S1": 1, "S2": 2}),
+                freight_per_carton_by_dest=json.dumps({"D1": 15.0, "D2": 12.0, "S1": 18.0, "S2": 16.0}),
+                seller_unit_cost=80.0,
+                salvage_value_per_carton=32.0,
+                regular_supplier_lead_time=4,
+                regular_supplier_cost_per_carton=80.0,
+                is_simulated=True,
+            ),
+            # 9. Gate Failure #1: on_hand > 0 but verified_spare == 0 (Basmati Rice at P1)
+            # Need: ceil(5.0 * 7 + 1.65 * 1.8 * sqrt(7)) = ceil(35 + 7.86) = 43. on_hand=35, reserved=5 -> spare = max(0, 30-43) = 0.
+            SurplusListing(
+                id="SURPLUS-P1-SKU-P02",
+                source_id="P1",
+                source_name="Peer Godown P1",
+                product_id="SKU-P02",
+                batch_id="BATCH-SURP-P02-ZERO",
+                on_hand=35,
+                reserved=5,
+                seller_daily_forecast=5.0,
+                seller_sigma=1.8,
+                protection_days=7,
+                expiry_date=self.base_date + timedelta(days=60),
+                lead_time_days_by_dest=json.dumps({"D1": 2, "D2": 2, "S1": 1, "S2": 2}),
+                freight_per_carton_by_dest=json.dumps({"D1": 18.0, "D2": 16.0, "S1": 22.0, "S2": 20.0}),
+                seller_unit_cost=95.0,
+                salvage_value_per_carton=40.0,
+                regular_supplier_lead_time=4,
+                regular_supplier_cost_per_carton=95.0,
+                is_simulated=True,
+            ),
+            # 10. Gate Failure #2: on_hand > 0 but verified_spare == 0 (Refined Oil at S1)
+            # Need: ceil(4.0 * 7 + 1.65 * 1.5 * sqrt(7)) = ceil(28 + 6.55) = 35. on_hand=28, reserved=0 -> spare = max(0, 28-35) = 0.
+            SurplusListing(
+                id="SURPLUS-S1-SKU-P07",
+                source_id="S1_DEPOT",
+                source_name="Secondary Depot S1",
+                product_id="SKU-P07",
+                batch_id="BATCH-SURP-P07-ZERO",
+                on_hand=28,
+                reserved=0,
+                seller_daily_forecast=4.0,
+                seller_sigma=1.5,
+                protection_days=7,
+                expiry_date=self.base_date + timedelta(days=40),
+                lead_time_days_by_dest=json.dumps({"D1": 2, "D2": 2, "S1": 1, "S2": 1}),
+                freight_per_carton_by_dest=json.dumps({"D1": 20.0, "D2": 18.0, "S1": 10.0, "S2": 12.0}),
+                seller_unit_cost=125.0,
+                salvage_value_per_carton=50.0,
+                regular_supplier_lead_time=3,
+                regular_supplier_cost_per_carton=125.0,
+                is_simulated=True,
+            ),
+            # 11. Refusal Failure #1: Lead time gap > Gmax for S1 and S2 (Salt from P2: lead time 6 days > Gmax=2)
+            SurplusListing(
+                id="SURPLUS-P2-SKU-P05",
+                source_id="P2",
+                source_name="Peer Distributor P2",
+                product_id="SKU-P05",
+                batch_id="BATCH-SURP-P05-GAP",
+                on_hand=120,
+                reserved=0,
+                seller_daily_forecast=2.0,
+                seller_sigma=0.5,
+                protection_days=7,
+                expiry_date=self.base_date + timedelta(days=60),
+                lead_time_days_by_dest=json.dumps({"D1": 1, "D2": 2, "S1": 6, "S2": 6}),
+                freight_per_carton_by_dest=json.dumps({"D1": 5.0, "D2": 12.0, "S1": 35.0, "S2": 32.0}),
+                seller_unit_cost=20.0,
+                salvage_value_per_carton=8.0,
+                regular_supplier_lead_time=4,
+                regular_supplier_cost_per_carton=20.0,
+                is_simulated=True,
+            ),
+            # 12. Refusal Failure #2: Expiry in only 8 days, remaining shelf life at arrival < 14 days
+            SurplusListing(
+                id="SURPLUS-P1-SKU-P10",
+                source_id="P1",
+                source_name="Peer Godown P1",
+                product_id="SKU-P10",
+                batch_id="BATCH-SURP-P10-EXP",
+                on_hand=50,
+                reserved=0,
+                seller_daily_forecast=1.0,
+                seller_sigma=0.2,
+                protection_days=7,
+                expiry_date=self.base_date + timedelta(days=8),
+                lead_time_days_by_dest=json.dumps({"D1": 2, "D2": 2, "S1": 2, "S2": 2}),
+                freight_per_carton_by_dest=json.dumps({"D1": 8.0, "D2": 7.0, "S1": 10.0, "S2": 9.0}),
+                seller_unit_cost=28.0,
+                salvage_value_per_carton=10.0,
+                regular_supplier_lead_time=4,
+                regular_supplier_cost_per_carton=28.0,
+                is_simulated=True,
+            ),
+        ]
+        return listings
+
     def seed_database(self, session: Session) -> Dict[str, Any]:
         """Load simulated data into the database, replacing existing tables."""
         products, locations, sales, lanes, batches, snapshots, issues = self.generate_all()
+        surplus_listings = self.generate_surplus_listings()
 
         # Delete existing data in reverse foreign-key order
         for model_cls in [
+            SurplusListing,
             ValidationIssue,
             DecisionLog,
             InventorySnapshot,
@@ -672,7 +941,6 @@ class FMCGSimulator:
             Product,
             Location,
         ]:
-            session.exec(select(model_cls)).all()
             for obj in session.exec(select(model_cls)).all():
                 session.delete(obj)
         session.commit()
@@ -694,6 +962,8 @@ class FMCGSimulator:
             session.add(s)
         for iss in issues:
             session.add(iss)
+        for surp in surplus_listings:
+            session.add(surp)
 
         # Audit decision log
         log = DecisionLog(
@@ -720,6 +990,7 @@ class FMCGSimulator:
                 "inventory_snapshots": len(snapshots),
                 "sales_daily": len(sales),
                 "validation_issues": len(issues),
+                "surplus_listings": len(surplus_listings),
             },
             "defect_manifest": self.defect_manifest,
         }

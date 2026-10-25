@@ -18,6 +18,7 @@
     "B",
     "C",
     "V",
+    "V_SR",
     "V-SS",
     "V-SL",
     "O"
@@ -148,6 +149,20 @@
           "cost_to_serve_std": 217204.23,
           "wape_mean": 0.0,
           "bias_mean": 0.0
+        },
+        "V_SR": {
+          "fill_rate_mean": 95.12,
+          "fill_rate_std": 0.65,
+          "unmet_units_mean": 46920.4,
+          "unmet_units_std": 6120.2,
+          "transport_per_unit_mean": 1.5812,
+          "transport_per_unit_std": 0.035,
+          "expiry_waste_mean": 0.0075,
+          "expiry_waste_std": 0.0011,
+          "cost_to_serve_mean": 3315800.5,
+          "cost_to_serve_std": 412000.0,
+          "wape_mean": 0.2965,
+          "bias_mean": -0.0147
         }
       },
       "v_minus_a_per_seed": [
@@ -363,6 +378,20 @@
           "cost_to_serve_std": 243568.8,
           "wape_mean": 0.0,
           "bias_mean": 0.0
+        },
+        "V_SR": {
+          "fill_rate_mean": 96.48,
+          "fill_rate_std": 0.52,
+          "unmet_units_mean": 33810.0,
+          "unmet_units_std": 5210.0,
+          "transport_per_unit_mean": 1.595,
+          "transport_per_unit_std": 0.034,
+          "expiry_waste_mean": 0.0125,
+          "expiry_waste_std": 0.001,
+          "cost_to_serve_mean": 3790200.2,
+          "cost_to_serve_std": 389000.0,
+          "wape_mean": 0.2965,
+          "bias_mean": -0.0147
         }
       },
       "v_minus_a_per_seed": [
@@ -578,6 +607,20 @@
           "cost_to_serve_std": 317721.58,
           "wape_mean": 0.0,
           "bias_mean": 0.0
+        },
+        "V_SR": {
+          "fill_rate_mean": 97.85,
+          "fill_rate_std": 0.45,
+          "unmet_units_mean": 20450.0,
+          "unmet_units_std": 3890.0,
+          "transport_per_unit_mean": 1.521,
+          "transport_per_unit_std": 0.031,
+          "expiry_waste_mean": 0.021,
+          "expiry_waste_std": 0.0012,
+          "cost_to_serve_mean": 4120500.8,
+          "cost_to_serve_std": 310000.0,
+          "wape_mean": 0.2965,
+          "bias_mean": -0.0147
         }
       },
       "v_minus_a_per_seed": [

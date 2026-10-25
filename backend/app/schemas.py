@@ -262,3 +262,108 @@ class ForecastRunResponse(BaseModel):
     forecasts: list[ForecastSeriesResponse]
     is_simulated: bool = True
 
+
+# ---------------------------------------------------------
+# Surplus Rescue & Dead-Stock Schemas
+# ---------------------------------------------------------
+class SurplusListingBase(BaseModel):
+    id: str
+    source_id: str
+    source_name: str
+    product_id: str
+    batch_id: str
+    on_hand: int
+    reserved: int = 0
+    seller_daily_forecast: float
+    seller_sigma: float
+    protection_days: int = 7
+    expiry_date: dt_date
+    lead_time_days_by_dest: dict[str, int] = Field(default_factory=dict)
+    freight_per_carton_by_dest: dict[str, float] = Field(default_factory=dict)
+    seller_unit_cost: float
+    salvage_value_per_carton: float
+    regular_supplier_lead_time: int = 4
+    regular_supplier_cost_per_carton: float
+    is_simulated: bool = True
+
+
+class SurplusListingRead(SurplusListingBase):
+    verified_spare_cartons: Optional[int] = None
+    seller_protected_need: Optional[int] = None
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GainsFromTradeRead(BaseModel):
+    seller_floor: float
+    buyer_ceiling: float
+    suggested_price: float
+    seller_gain_inr: float
+    buyer_gain_inr: float
+    rescuable_cartons: int
+
+
+class LandedCostComparisonOption(BaseModel):
+    option_key: str  # leave_unmet | regular_supplier | surplus_rescue
+    title: str
+    transfer_cost: float
+    freight_cost: float
+    lost_margin: float
+    total_cost_to_serve: float
+    net_savings_vs_leave_unmet: float = 0.0
+    net_savings_vs_regular_supplier: float = 0.0
+
+
+class LandedCostComparisonRead(BaseModel):
+    destination_id: str
+    product_id: str
+    unmet_cartons: int
+    options: list[LandedCostComparisonOption]
+    best_option: str
+
+
+class SurplusSourceEvaluation(BaseModel):
+    listing_id: str
+    source_id: str
+    source_name: str
+    batch_id: str
+    eligible: bool
+    on_hand: int
+    seller_protected_need: int
+    verified_spare_cartons: int
+    rescuable_cartons: int
+    reason: str
+    price_band: Optional[GainsFromTradeRead] = None
+    lead_time_days: int
+    freight_per_carton: float
+
+
+class ShortfallRescueAnalysisRead(BaseModel):
+    destination_id: str
+    product_id: str
+    unmet_cartons: int
+    sources_considered: list[SurplusSourceEvaluation]
+    best_rescue_source: Optional[SurplusSourceEvaluation] = None
+    cost_comparison: Optional[LandedCostComparisonRead] = None
+
+
+class DeadStockWarningRead(BaseModel):
+    batch_id: str
+    location_id: str
+    product_id: str
+    product_name: str
+    days_to_expiry: int
+    expiry_date: dt_date
+    unshipped_cartons: int
+    projected_network_sales: int
+    stranded_cartons: int
+    value_at_risk_inr: float
+    recommended_action: str  # Transfer to {dest} | List as verified surplus | Hold
+
+
+class RescueApplyRequest(BaseModel):
+    destination_id: str
+    product_id: str
+    surplus_listing_id: str
+    cartons: Optional[int] = Field(default=None, ge=1)
+    notes: Optional[str] = None
+

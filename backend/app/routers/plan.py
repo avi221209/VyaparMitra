@@ -33,6 +33,19 @@ from backend.app.models import (
     Product,
     SalesDaily,
     Settings,
+    SurplusListing,
+)
+from backend.app.schemas import (
+    DeadStockWarningRead,
+    RescueApplyRequest,
+    SurplusListingRead,
+)
+from backend.app.services.surplus import (
+    apply_shortfall_rescue,
+    build_rescue_analysis_for_unmet,
+    compute_dead_stock_warnings,
+    compute_verified_spare_stock,
+    undo_shortfall_rescue,
 )
 from backend.app.services.eligibility import (
     BatchEligibilityResult,
@@ -66,6 +79,7 @@ class PlanCreateRequest(BaseModel):
     overrides: Optional[Dict[str, Any]] = Field(default=None, description="Optional network or demand overrides")
     notes: Optional[str] = Field(default=None, description="Planner notes")
     force_heuristic: Optional[bool] = Field(default=False, description="Force heuristic fallback for testing/drills")
+    include_surplus: Optional[bool] = Field(default=False, description="Auto-allocate verified surplus rescue stock into the plan")
 
 
 class LineApproveRequest(BaseModel):
@@ -272,7 +286,57 @@ def create_plan(
         force_heuristic=effective_force_heuristic,
     )
 
-    # Fetch persisted lines from DB
+    # If include_surplus was requested, allocate verified surplus for any unmet demand
+    if req_payload.include_surplus and result.unmet_by_destination_product:
+        surplus_listings = list(session.exec(select(SurplusListing)).all())
+        products_map = {p.id: p for p in session.exec(select(Product)).all()}
+        for (d_id, p_id), unmet_info in result.unmet_by_destination_product.items():
+            udem = unmet_info.get("udem", 0)
+            if udem <= 0:
+                continue
+            prod = products_map.get(p_id)
+            inv_pos = session.exec(
+                select(InventorySnapshot.on_hand)
+                .where(InventorySnapshot.location_id == d_id, InventorySnapshot.product_id == p_id)
+            ).first() or 0
+            daily_fc = session.exec(
+                select(func.avg(SalesDaily.units))
+                .where(SalesDaily.location_id == d_id, SalesDaily.product_id == p_id)
+            ).first() or 5.0
+            cover_days = inv_pos / max(0.1, daily_fc)
+
+            analysis = build_rescue_analysis_for_unmet(
+                destination_id=d_id,
+                product_id=p_id,
+                unmet_cartons=udem,
+                listings=surplus_listings,
+                as_of=effective_as_of,
+                cover_days=cover_days,
+                daily_forecast_dest=daily_fc,
+                inv_position_dest=inv_pos,
+                unit_cost=prod.unit_cost if prod else 100.0,
+                unit_margin=prod.unit_margin if prod else 20.0,
+                min_remaining_shelf_days=getattr(sys_settings, "min_remaining_shelf_life", 14),
+                gmax=getattr(sys_settings, "Gmax", 2),
+                z=getattr(sys_settings, "z", 1.65),
+            )
+            if analysis.best_rescue_source and analysis.best_rescue_source.eligible:
+                try:
+                    apply_shortfall_rescue(
+                        session=session,
+                        run_id=result.run_id,
+                        destination_id=d_id,
+                        product_id=p_id,
+                        surplus_listing_id=analysis.best_rescue_source.listing_id,
+                        cartons=min(udem, analysis.best_rescue_source.rescuable_cartons),
+                        actor_role=role,
+                        notes="Auto-allocated via include_surplus",
+                    )
+                except Exception:
+                    pass
+
+    # Fetch updated PlanRun and persisted lines from DB
+    plan_run_updated = session.get(PlanRun, result.run_id) or result
     persisted_lines = session.exec(
         select(PlanLine).where(PlanLine.run_id == result.run_id).order_by(PlanLine.id)  # type: ignore
     ).all()
@@ -280,12 +344,12 @@ def create_plan(
     return {
         "run_id": result.run_id,
         "planning_date": str(result.plan_date),
-        "status": result.status,
+        "status": getattr(plan_run_updated, "status", result.status),
         "solver_status": result.solver_status,
-        "total_cost": result.total_cost,
-        "total_cartons": result.total_cartons,
+        "total_cost": getattr(plan_run_updated, "total_cost", result.total_cost),
+        "total_cartons": getattr(plan_run_updated, "total_cartons", result.total_cartons),
         "total_demand_cartons": result.total_demand_cartons,
-        "total_unmet_cartons": result.total_unmet_demand_cartons,
+        "total_unmet_cartons": getattr(plan_run_updated, "total_unmet_cartons", result.total_unmet_demand_cartons),
         "total_unmet_safety_stock_cartons": result.total_unmet_safety_stock_cartons,
         "lines_count": len(persisted_lines),
         "lines": [
@@ -356,6 +420,62 @@ def get_plan(
         except Exception:
             unmet_panel = []
 
+    # Surplus & Dead-Stock Intelligence Enrichment
+    surplus_listings = list(session.exec(select(SurplusListing)).all())
+    products_map = {p.id: p for p in session.exec(select(Product)).all()}
+    sys_settings = get_current_settings(session)
+
+    # Check already applied rescue lines in this plan
+    rescue_lines_map: Dict[Tuple[str, str], int] = {}
+    for line in lines:
+        flags = json.loads(line.flags_json) if line.flags_json else []
+        if any("Surplus rescue" in str(f) for f in flags):
+            rescue_lines_map[(line.destination_id, line.product_id)] = (
+                rescue_lines_map.get((line.destination_id, line.product_id), 0) + line.cartons
+            )
+
+    for item in unmet_panel:
+        d_id = item.get("destination_id")
+        p_id = item.get("product_id")
+        raw_udem = item.get("udem", 0)
+        rescued_cartons = rescue_lines_map.get((d_id, p_id), 0)
+        effective_unmet = max(0, raw_udem - rescued_cartons)
+        item["rescued_cartons"] = rescued_cartons
+        item["effective_unmet_cartons"] = effective_unmet
+
+        prod = products_map.get(p_id)
+        inv_pos = session.exec(
+            select(InventorySnapshot.on_hand)
+            .where(InventorySnapshot.location_id == d_id, InventorySnapshot.product_id == p_id)
+        ).first() or 0
+        daily_fc = session.exec(
+            select(func.avg(SalesDaily.units))
+            .where(SalesDaily.location_id == d_id, SalesDaily.product_id == p_id)
+        ).first() or 5.0
+        cover_days = inv_pos / max(0.1, daily_fc)
+
+        rescue_analysis = build_rescue_analysis_for_unmet(
+            destination_id=d_id,
+            product_id=p_id,
+            unmet_cartons=effective_unmet if effective_unmet > 0 else raw_udem,
+            listings=surplus_listings,
+            as_of=plan_run.planning_date,
+            cover_days=cover_days,
+            daily_forecast_dest=daily_fc,
+            inv_position_dest=inv_pos,
+            unit_cost=prod.unit_cost if prod else 100.0,
+            unit_margin=prod.unit_margin if prod else 20.0,
+            min_remaining_shelf_days=getattr(sys_settings, "min_remaining_shelf_life", 14),
+            gmax=getattr(sys_settings, "Gmax", 2),
+            z=getattr(sys_settings, "z", 1.65),
+        )
+        item["rescue_analysis"] = rescue_analysis.model_dump()
+
+    dead_stock_warnings = [
+        w.model_dump()
+        for w in compute_dead_stock_warnings(session, plan_date=plan_run.planning_date, plan_lines=lines)
+    ]
+
     return {
         "run_id": plan_run.id,
         "planning_date": str(plan_run.planning_date),
@@ -390,6 +510,7 @@ def get_plan(
             for line in lines
         ],
         "unmet_panel": unmet_panel,
+        "dead_stock_warnings": dead_stock_warnings,
         "is_simulated": True,
     }
 
@@ -688,6 +809,29 @@ def get_plan_line_explanation_card(
         "has_safety_stock_gap": uss > 0,
     }
 
+    flags = json.loads(line.flags_json) if line.flags_json else []
+    is_surplus_rescue = any("Surplus rescue" in str(f) for f in flags)
+
+    rescue_analysis_dict = None
+    if is_surplus_rescue or residual_risk["has_unmet_demand"]:
+        surplus_listings = list(session.exec(select(SurplusListing)).all())
+        dest = session.get(Location, d)
+        ra = build_rescue_analysis_for_unmet(
+            session=session,
+            destination_id=d,
+            destination_name=dest.name if dest else d,
+            product_id=k,
+            product_name=prod.name if prod else k,
+            unmet_cartons=residual_risk["unmet_demand_cartons"] or line.cartons,
+            planning_date=plan_date,
+            surplus_listings=surplus_listings,
+            products_map={p.id: p for p in session.exec(select(Product)).all()},
+            req=req,
+            g_max=getattr(sys_settings, "Gmax", 2.0),
+            z=getattr(sys_settings, "z", 1.65),
+        )
+        rescue_analysis_dict = ra.model_dump()
+
     return {
         "line_id": line.id,
         "run_id": line.run_id,
@@ -698,6 +842,9 @@ def get_plan_line_explanation_card(
         "allocated_cartons": line.cartons,
         "line_cost": line.cost,
         "status": line.status,
+        "flags": flags,
+        "is_surplus_rescue": is_surplus_rescue,
+        "rescue_analysis": rescue_analysis_dict,
         "sources_considered": sources_considered,
         "chosen": chosen_info,
         "constraints_checked": constraints_checked,
@@ -1096,3 +1243,92 @@ def get_audit_trail(
         }
         for log in logs
     ]
+
+
+# -------------------------------------------------------------------
+# 8. Surplus Rescue & Dead-Stock Intelligence Endpoints
+# -------------------------------------------------------------------
+
+@router.post("/api/plan/{run_id}/rescue/apply", tags=["Plan & Allocation"])
+@router.post("/api/v1/plan/{run_id}/rescue/apply", tags=["Plan & Allocation"])
+def apply_rescue_endpoint(
+    run_id: str,
+    payload: RescueApplyRequest,
+    session: Session = Depends(get_session),
+    role: str = Depends(verify_planner_or_reviewer_role),
+) -> dict:
+    """
+    Apply a verified surplus rescue allocation to an existing PlanRun.
+    Role-gated to planner or reviewer.
+    """
+    try:
+        res = apply_shortfall_rescue(
+            session=session,
+            run_id=run_id,
+            destination_id=payload.destination_id,
+            product_id=payload.product_id,
+            surplus_listing_id=payload.surplus_listing_id,
+            cartons=payload.cartons,
+            actor_role=role,
+            notes=payload.notes,
+        )
+        return res
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.post("/api/plan/{run_id}/rescue/undo", tags=["Plan & Allocation"])
+@router.post("/api/v1/plan/{run_id}/rescue/undo", tags=["Plan & Allocation"])
+def undo_rescue_endpoint(
+    run_id: str,
+    log_id: int = Query(..., description="DecisionLog ID of the rescue action to undo"),
+    session: Session = Depends(get_session),
+    role: str = Depends(verify_planner_or_reviewer_role),
+) -> dict:
+    """
+    Undo a previously applied surplus rescue.
+    Role-gated to planner or reviewer.
+    """
+    try:
+        res = undo_shortfall_rescue(
+            session=session,
+            log_id=log_id,
+            actor_role=role,
+        )
+        return res
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.get("/api/surplus/listings", tags=["Plan & Allocation"])
+@router.get("/api/v1/surplus/listings", tags=["Plan & Allocation"])
+def get_surplus_listings(session: Session = Depends(get_session)) -> list[dict]:
+    """
+    Return all peer and depot surplus listings with verified spare calculations.
+    """
+    listings = session.exec(select(SurplusListing)).all()
+    results = []
+    for l in listings:
+        spare, need, _ = compute_verified_spare_stock(l)
+        d = l.model_dump()
+        d["lead_time_days_by_dest"] = l.get_lead_time_dict()
+        d["freight_per_carton_by_dest"] = l.get_freight_dict()
+        d["verified_spare_cartons"] = spare
+        d["seller_protected_need"] = need
+        results.append(d)
+    return results
+
+
+@router.get("/api/plan/{run_id}/dead-stock", tags=["Plan & Allocation"])
+@router.get("/api/v1/plan/{run_id}/dead-stock", tags=["Plan & Allocation"])
+def get_dead_stock(run_id: str, session: Session = Depends(get_session)) -> list[dict]:
+    """
+    Return dead-stock early warnings for warehouse batches under this plan run.
+    """
+    plan_run = session.get(PlanRun, run_id)
+    if not plan_run:
+        raise HTTPException(status_code=404, detail="PlanRun not found")
+    lines = list(session.exec(select(PlanLine).where(PlanLine.run_id == run_id)).all())
+    warnings = compute_dead_stock_warnings(session, plan_date=plan_run.planning_date, plan_lines=lines)
+    return [w.model_dump() for w in warnings]
+
