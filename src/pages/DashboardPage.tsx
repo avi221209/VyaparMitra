@@ -32,6 +32,8 @@ import {
   apiFetch,
   getStoredRole,
   DemoRole,
+  getBackendBaseUrl,
+  setBackendBaseUrl,
 } from '../lib/api';
 import { getStoredUserName } from '../components/layout/ProfileChip';
 import { SettingsDrawer } from '../components/layout/SettingsDrawer';
@@ -135,6 +137,95 @@ interface DashboardData {
     total: number;
     items: PendingApprovalItem[];
   };
+}
+
+function DashboardErrorCard({ error, onRetry }: { error: any; onRetry: () => void }) {
+  const [customUrl, setCustomUrl] = useState(getBackendBaseUrl());
+  const [testing, setTesting] = useState(false);
+  const { toast } = useToast();
+
+  const handleSaveUrl = async (urlToSave: string) => {
+    setTesting(true);
+    setBackendBaseUrl(urlToSave);
+    try {
+      const cleanUrl = urlToSave.trim().replace(/\/$/, '');
+      const testEndpoint = cleanUrl ? `${cleanUrl}/api/v1/health` : '/api/v1/health';
+      const res = await fetch(testEndpoint);
+      if (!res.ok && res.status !== 200) {
+        throw new Error(`Server returned HTTP ${res.status}`);
+      }
+      toast({ type: 'success', message: 'Connected to backend successfully!' });
+      onRetry();
+    } catch (err: any) {
+      toast({
+        type: 'info',
+        message: `Saved URL, but health check returned: ${err.message}. Retrying dashboard anyway...`,
+      });
+      onRetry();
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <div className="p-8 md:p-12 text-center bg-surface rounded-[12px] border border-line shadow-card flex flex-col items-center justify-center gap-5 max-w-xl mx-auto my-8">
+      <div className="w-12 h-12 rounded-full bg-madder-wash text-madder flex items-center justify-center">
+        <AlertTriangle className="w-6 h-6" strokeWidth={1.5} />
+      </div>
+      <div>
+        <h2 className="text-section font-serif font-semibold text-ink">Unable to Load Dashboard</h2>
+        <p className="text-body text-ink-3 mt-1 max-w-md mx-auto">
+          {error?.message || 'Could not communicate with the VyaparMitra backend service.'}
+        </p>
+      </div>
+
+      <div className="w-full bg-paper rounded-[8px] border border-line p-4 text-left flex flex-col gap-3">
+        <label className="text-[12px] font-semibold text-ink uppercase tracking-wider block">
+          Backend Service URL (Render / API Host)
+        </label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            className="flex-1 px-3 py-2 text-sm bg-surface rounded border border-line text-ink focus:outline-none focus:ring-1 focus:ring-brand font-mono"
+            placeholder="https://your-service.onrender.com"
+            value={customUrl}
+            onChange={(e) => setCustomUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSaveUrl(customUrl);
+            }}
+          />
+          <Button
+            variant="primary"
+            loading={testing}
+            onClick={() => handleSaveUrl(customUrl)}
+            className="text-sm px-4 whitespace-nowrap"
+          >
+            Save & Connect
+          </Button>
+        </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11.5px] text-ink-3 gap-2">
+          <span>Tip: Add <code className="text-brand font-mono">VITE_API_BASE_URL</code> in Netlify Environment Variables.</span>
+          <button
+            type="button"
+            className="text-brand hover:underline font-medium self-start sm:self-auto cursor-pointer"
+            onClick={() => {
+              setCustomUrl('http://127.0.0.1:8000');
+              handleSaveUrl('http://127.0.0.1:8000');
+            }}
+          >
+            Use Localhost (127.0.0.1:8000)
+          </button>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <Button variant="secondary" onClick={onRetry} className="inline-flex items-center gap-2">
+          <RotateCw className="w-4 h-4" />
+          <span>Retry Connection</span>
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 export function DashboardPage() {
@@ -332,24 +423,13 @@ export function DashboardPage() {
     );
   }
 
-  // 2. Global Error State with Retry
+  // 2. Global Error State with Retry & Backend Configuration
   if (isError || !data) {
     return (
-      <div className="p-12 text-center bg-surface rounded-[12px] border border-line shadow-card flex flex-col items-center justify-center gap-4">
-        <div className="w-12 h-12 rounded-full bg-madder-wash text-madder flex items-center justify-center">
-          <AlertTriangle className="w-6 h-6" strokeWidth={1.5} />
-        </div>
-        <div>
-          <h2 className="text-section font-serif font-semibold text-ink">Unable to Load Dashboard</h2>
-          <p className="text-body text-ink-3 mt-1 max-w-md">
-            {(error as any)?.message || 'Could not communicate with VyaparMitra backend service.'}
-          </p>
-        </div>
-        <Button variant="primary" onClick={() => refetch()} className="inline-flex items-center gap-2">
-          <RotateCw className="w-4 h-4" />
-          <span>Retry Connection</span>
-        </Button>
-      </div>
+      <DashboardErrorCard
+        error={error}
+        onRetry={() => refetch()}
+      />
     );
   }
 

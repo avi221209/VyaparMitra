@@ -17,6 +17,7 @@ import {
   getStoredRole,
   setStoredRole,
   apiFetch,
+  getBackendBaseUrl,
 } from '../../lib/api';
 import { SettingsDrawer } from './SettingsDrawer';
 import { GuideDrawer } from './GuideDrawer';
@@ -77,14 +78,20 @@ export function AppShell({ children, pageTitle }: AppShellProps) {
 
     const handleUnreachable = () => setBackendHealthy(false);
     const handleReachable = () => setBackendHealthy(true);
+    const handleUrlChange = () => {
+      checkHealth();
+      loadSampleDataStatus();
+    };
 
     window.addEventListener('backend-unreachable', handleUnreachable);
     window.addEventListener('backend-reachable', handleReachable);
+    window.addEventListener('backend-url-changed', handleUrlChange);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('backend-unreachable', handleUnreachable);
       window.removeEventListener('backend-reachable', handleReachable);
+      window.removeEventListener('backend-url-changed', handleUrlChange);
     };
   }, []);
 
@@ -137,17 +144,31 @@ export function AppShell({ children, pageTitle }: AppShellProps) {
         >
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-surface shrink-0" strokeWidth={1.5} />
-            <span>Cannot reach backend at 127.0.0.1:8000. Start the server and click Retry.</span>
+            <span>
+              {getBackendBaseUrl()
+                ? `Cannot connect to backend at ${getBackendBaseUrl()}. Please verify your service is running.`
+                : 'Backend unreachable. Click Configure URL to connect to your Render service or local server.'}
+            </span>
           </div>
-          <button
-            type="button"
-            onClick={checkHealth}
-            disabled={checkingHealth}
-            className="inline-flex items-center gap-1.5 px-3 py-1 bg-surface text-madder text-meta font-semibold rounded-control hover:bg-paper active:scale-95 transition-transform"
-          >
-            <RotateCw className={`w-3.5 h-3.5 ${checkingHealth ? 'animate-spin' : ''}`} strokeWidth={1.5} />
-            <span>Retry</span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-surface/20 hover:bg-surface/30 text-surface text-meta font-medium rounded-control active:scale-95 transition-all cursor-pointer"
+            >
+              <Sliders className="w-3.5 h-3.5" strokeWidth={1.5} />
+              <span>Configure URL</span>
+            </button>
+            <button
+              type="button"
+              onClick={checkHealth}
+              disabled={checkingHealth}
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-surface text-madder text-meta font-semibold rounded-control hover:bg-paper active:scale-95 transition-transform cursor-pointer"
+            >
+              <RotateCw className={`w-3.5 h-3.5 ${checkingHealth ? 'animate-spin' : ''}`} strokeWidth={1.5} />
+              <span>Retry</span>
+            </button>
+          </div>
         </div>
       )}
 

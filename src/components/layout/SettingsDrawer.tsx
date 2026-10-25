@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Drawer, Button, Field, Input, InlineMessage, useToast } from '../ui';
-import { apiFetch } from '../../lib/api';
-import { RotateCcw } from 'lucide-react';
+import { apiFetch, getBackendBaseUrl, setBackendBaseUrl } from '../../lib/api';
+import { RotateCcw, Server, CheckCircle2 } from 'lucide-react';
 
 export interface SettingsDrawerProps {
   open: boolean;
@@ -13,6 +13,9 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  const [backendUrl, setBackendUrl] = useState(getBackendBaseUrl());
+  const [testingBackend, setTestingBackend] = useState(false);
+
   const { data: currentSettings, isLoading } = useQuery({
     queryKey: ['system-settings'],
     queryFn: () => apiFetch<any>('/api/v1/settings'),
@@ -20,6 +23,35 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
   });
 
   const [formState, setFormState] = useState<any>({});
+
+  React.useEffect(() => {
+    if (open) {
+      setBackendUrl(getBackendBaseUrl());
+    }
+  }, [open]);
+
+  const handleSaveBackendUrl = async (urlToSave: string) => {
+    setTestingBackend(true);
+    setBackendBaseUrl(urlToSave);
+    try {
+      const clean = urlToSave.trim().replace(/\/$/, '');
+      const testEndpoint = clean ? `${clean}/api/v1/health` : '/api/v1/health';
+      const res = await fetch(testEndpoint);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      toast({ type: 'success', message: 'Backend connected successfully!' });
+      queryClient.invalidateQueries();
+    } catch (err: any) {
+      toast({
+        type: 'info',
+        message: `Saved URL, but health check failed: ${err.message}. Server may still be waking up.`,
+      });
+      queryClient.invalidateQueries();
+    } finally {
+      setTestingBackend(false);
+    }
+  };
 
   React.useEffect(() => {
     if (currentSettings) {
@@ -93,6 +125,51 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
       }
     >
       <div className="flex flex-col gap-5">
+        {/* Backend API Connection section */}
+        <div className="p-3.5 bg-paper rounded-[8px] border border-line flex flex-col gap-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] font-semibold text-ink uppercase tracking-wider flex items-center gap-1.5">
+              <Server className="w-3.5 h-3.5 text-brand" />
+              <span>Backend API URL</span>
+            </span>
+            <span className="text-[11px] text-ink-3">Render / Local</span>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              className="flex-1 px-3 py-1.5 text-xs bg-surface rounded border border-line text-ink font-mono focus:outline-none focus:ring-1 focus:ring-brand"
+              placeholder="https://your-service.onrender.com"
+              value={backendUrl}
+              onChange={(e) => setBackendUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSaveBackendUrl(backendUrl);
+              }}
+            />
+            <Button
+              variant="primary"
+              size="sm"
+              loading={testingBackend}
+              onClick={() => handleSaveBackendUrl(backendUrl)}
+              className="text-xs px-3 whitespace-nowrap"
+            >
+              Save URL
+            </Button>
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-ink-3">
+            <span>Tip: Configure in Netlify with <code className="text-brand font-mono">VITE_API_BASE_URL</code></span>
+            <button
+              type="button"
+              className="text-brand hover:underline font-medium cursor-pointer"
+              onClick={() => {
+                setBackendUrl('http://127.0.0.1:8000');
+                handleSaveBackendUrl('http://127.0.0.1:8000');
+              }}
+            >
+              Use Localhost
+            </button>
+          </div>
+        </div>
+
         <Field
           label="Planning horizon (H, days)"
           hint="Calendar days of future demand covered by this planning run."
