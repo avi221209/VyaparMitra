@@ -30,13 +30,7 @@ if [ ! -d "node_modules" ]; then
     npm install
 fi
 
-# 3. Check Evaluation Benchmark Cache
-if [ ! -f "data/evaluation_cache.json" ]; then
-    echo "Evaluation benchmark cache missing. Running initial benchmark..."
-    $PYTHON_CMD backend/scripts/run_benchmark.py
-fi
-
-# 4. Start backend and frontend
+# 3. Start backend and frontend
 echo "Starting VyaparMitra Backend (FastAPI on http://127.0.0.1:8000)..."
 $PYTHON_CMD -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 &
 BACKEND_PID=$!

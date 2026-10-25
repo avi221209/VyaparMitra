@@ -7,6 +7,7 @@ import pandas as pd
 from pathlib import Path
 from sqlmodel import Session, select, delete
 
+from backend.app.config import settings
 from backend.app.db import get_session
 from backend.app.models import (
     Batch,
@@ -177,7 +178,19 @@ async def upload_csv_file(
 
     try:
         content_bytes = await file.read()
+        if len(content_bytes) > settings.MAX_UPLOAD_SIZE_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                detail=f"File exceeds maximum upload size limit of {settings.MAX_UPLOAD_SIZE_BYTES // (1024 * 1024)} MB.",
+            )
         df = pd.read_csv(io.BytesIO(content_bytes))
+        if len(df) > settings.MAX_UPLOAD_ROWS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"CSV row count ({len(df)}) exceeds the maximum allowed limit of {settings.MAX_UPLOAD_ROWS} rows.",
+            )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

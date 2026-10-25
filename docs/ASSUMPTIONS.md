@@ -139,3 +139,17 @@ As mandated by Rule 7 ("Where the spec is ambiguous, choose the simplest interpr
 - **Benefit vs. Baseline**:
   - Retrieved from `data/evaluation_cache.json` under the `balanced` scenario for `Forecast + Greedy Allocation` ($C_{\text{baseline}} - C_{\text{VyaparMitra}}$). If the walk-forward evaluation cache is missing or not yet generated, returns `null` rather than generating simulated savings.
 
+## 13. Production Hardening & Scaffolding Retirement (Phases 4-5)
+- **Strict `/api/v1` Versioning**:
+  - All public and internal REST routes are unified under `/api/v1/...` (`/api/v1/health`, `/api/v1/data/...`, `/api/v1/plan/...`, `/api/v1/forecast/...`, `/api/v1/evaluate/...`, `/api/v1/dashboard/...`, `/api/v1/settings/...`, `/api/v1/notifications`, `/api/v1/search`, `/api/v1/audit`).
+  - Unversioned `/api/...` routes and prototype backup/seeding endpoints (`/api/demo/backup`, `/api/plan/load-backup`, `/api/data/seed`) are permanently retired.
+- **Sample Data Master Folder (`data/sample/`)**:
+  - Master regional FMCG baseline datasets are maintained in `data/sample/` (`locations.csv`, `products.csv`, `lanes.csv`, `batches.csv`, `inventory_snapshots.csv`, `sales_daily.csv`, `manifest.json`).
+  - `POST /api/v1/data/sample` clears existing database records, ingests the bundled sample CSV files, runs data validation, and logs the operation to the audit ledger.
+- **CSV Ingestion Safety Limits**:
+  - Enforces a 10 MB file size limit (`MAX_UPLOAD_SIZE_BYTES`, HTTP 413) and a 50,000 row cap (`MAX_UPLOAD_ROWS`, HTTP 400) on all CSV file uploads to protect backend memory.
+- **CORS Configuration**:
+  - Supports `ALLOWED_ORIGINS` environment variable (parsed as comma-separated list or JSON array) with safe fallback to `CORS_ORIGINS`.
+- **Production Container Architecture**:
+  - Multi-stage Docker build: Stage 1 builds the Vite/React frontend; Stage 2 installs Coin-OR CBC, Python dependencies, and serves the FastAPI application and static bundle via Uvicorn with automated healthcheck probe.
+

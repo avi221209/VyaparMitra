@@ -1,7 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ToastProvider, Button, Skeleton } from './components/ui';
+import { ToastProvider, Button, Skeleton, ErrorBoundary } from './components/ui';
 import { AppShell } from './components/layout/AppShell';
 
 // Route-level code splitting for fast initial load
@@ -44,9 +44,11 @@ function PageWrapper({
 
   return (
     <AppShell pageTitle={title}>
-      <Suspense fallback={<RouteLoadingFallback />}>
-        {children}
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<RouteLoadingFallback />}>
+          {children}
+        </Suspense>
+      </ErrorBoundary>
     </AppShell>
   );
 }

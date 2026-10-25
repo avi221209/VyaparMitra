@@ -4,7 +4,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, func, select
 
-from backend.app.config import settings
+from backend.app.config import BASE_DIR, settings
 from backend.app.db import engine, get_session, init_db
 from backend.app.models import (
     Batch,
@@ -61,7 +61,7 @@ from backend.app.routers.dashboard import router as dashboard_router
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=settings.get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -213,3 +213,29 @@ def list_decision_logs(
             select(DecisionLog).order_by(DecisionLog.timestamp.desc()).limit(limit)  # type: ignore
         ).all()
     )
+
+
+# -------------------------------------------------------------------
+# SPA Frontend Static Files Mounting (Production / Container mode)
+# -------------------------------------------------------------------
+dist_path = BASE_DIR / "dist"
+if dist_path.exists():
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import FileResponse
+
+    assets_path = dist_path / "assets"
+    if assets_path.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_path)), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_spa(full_path: str):
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
+        file_path = dist_path / full_path
+        if file_path.is_file():
+            return FileResponse(file_path)
+        index_file = dist_path / "index.html"
+        if index_file.exists():
+            return FileResponse(index_file)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
+

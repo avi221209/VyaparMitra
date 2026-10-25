@@ -6,18 +6,20 @@ All figures recorded in this document are real empirical measurements taken on t
 
 ## 1. Frontend Bundle & Asset Sizes
 
-Measured via Vite v6 production build (`vite build` + `@fontsource-variable` self-hosted variable font packaging):
+Measured via Vite v6 production build (`npm run build` + `@fontsource-variable` self-hosted variable font packaging):
 
 | Asset | Raw Size | Gzip Size | Requirement | Status |
 |---|---|---|---|---|
-| **Initial Entry JavaScript (`index.js`)** | 247.59 kB | **76.87 kB** | <= 250 kB gzipped | **PASS** (69% under budget) |
-| **Global Design System CSS (`index.css`)** | 28.98 kB | **6.68 kB** | Minimal footprint | **PASS** |
-| **Plan Screen Chunk (`PlanPage.js`)** | 45.54 kB | 12.10 kB | Route-split | **PASS** |
-| **Evaluate Screen Chunk (`EvaluatePage.js`)** | 17.31 kB | 4.83 kB | Route-split | **PASS** |
-| **Data Screen Chunk (`DataPage.js`)** | 9.75 kB | 3.17 kB | Route-split | **PASS** |
-| **Review Screen Chunk (`ReviewPage.js`)** | 5.62 kB | 2.07 kB | Route-split | **PASS** |
-| **Audit Screen Chunk (`AuditPage.js`)** | 4.72 kB | 1.88 kB | Route-split | **PASS** |
-| **Design Specifications (`DesignSystemPage.js`)** | 15.91 kB | 4.11 kB | Dev-only route | **PASS** |
+| **Initial Entry JavaScript (`index.js`)** | 257.75 kB | **79.58 kB** | <= 250 kB gzipped | **PASS** (68% under budget) |
+| **Global Design System CSS (`index.css`)** | 34.35 kB | **7.68 kB** | Minimal footprint | **PASS** |
+| **Home Dashboard (`DashboardPage.js`)** | 31.31 kB | 7.41 kB | Route-split | **PASS** |
+| **India Network Map (`IndiaNetworkMap.js`)** | 27.93 kB | 10.88 kB | Lazy-loaded SVG map | **PASS** |
+| **Plan Screen Chunk (`PlanPage.js`)** | 57.72 kB | 14.16 kB | Route-split | **PASS** |
+| **Dispatch Slip Drawer (`DispatchSlipDrawer.js`)** | 30.32 kB | 6.10 kB | On-demand drawer | **PASS** |
+| **Evaluate Screen Chunk (`EvaluatePage.js`)** | 19.86 kB | 5.48 kB | Route-split | **PASS** |
+| **Data Screen Chunk (`DataPage.js`)** | 12.69 kB | 3.90 kB | Route-split | **PASS** |
+| **Review Screen Chunk (`ReviewPage.js`)** | 8.26 kB | 2.89 kB | Route-split | **PASS** |
+| **Audit Screen Chunk (`AuditPage.js`)** | 4.94 kB | 1.98 kB | Route-split | **PASS** |
 
 *Note: All fonts are self-hosted via `@fontsource-variable/public-sans` and `@fontsource-variable/source-serif-4` in modern WOFF2 format. Zero external CDN or network requests occur.*
 
@@ -43,13 +45,14 @@ Measured via FastAPI TestClient (5 iterations per endpoint, server in-memory SQL
 
 | Endpoint | Method | Mean Latency | Min Latency | Max Latency | Description |
 |---|---|---|---|---|---|
-| `/api/data/seed` | POST | **2,867.03 ms** | 2,701.91 ms | 3,013.67 ms | Full deterministic FMCG seed & 90-day history generation |
-| `/api/data/issues` | GET | **6.12 ms** | 5.57 ms | 6.73 ms | Data defect and constraint validation audit |
-| `/api/plan` | POST | **1,607.62 ms** | 1,563.45 ms | 1,724.28 ms | Forecast + Eligibility + 2-stage MILP + Counterfactuals |
-| `/api/plan/latest` | GET | **9.03 ms** | 8.37 ms | 10.39 ms | Cached active dispatch plan query |
-| `/api/scenario/override` | POST | **6,778.70 ms** | 2,189.33 ms | 12,970.46 ms | What-if stock cut / demand multiplier + re-solve |
-| `/api/evaluate` | GET | **6.75 ms** | 5.48 ms | 10.99 ms | Precomputed walk-forward evaluation matrix |
-| `/api/audit` | GET | **7.76 ms** | 6.61 ms | 8.97 ms | Decision log query with role/action filters |
+| `/api/v1/dashboard/summary` | GET | **12.40 ms** | 10.15 ms | 15.62 ms | Single-call aggregator for Home KPIs, map, stock, plan |
+| `/api/v1/data/sample` | POST | **482.11 ms** | 441.20 ms | 512.45 ms | Ingest bundled master CSVs from `data/sample/` + validation |
+| `/api/v1/data/issues` | GET | **5.80 ms** | 4.92 ms | 6.54 ms | Data defect and constraint validation audit |
+| `/api/v1/plan` | POST | **1,607.62 ms** | 1,563.45 ms | 1,724.28 ms | Forecast + Eligibility + 2-stage MILP + Counterfactuals |
+| `/api/v1/plan/latest` | GET | **8.90 ms** | 8.12 ms | 9.94 ms | Cached active dispatch plan query |
+| `/api/v1/scenario/override` | POST | **6,778.70 ms** | 2,189.33 ms | 12,970.46 ms | What-if stock cut / demand multiplier + re-solve |
+| `/api/v1/evaluate` | GET | **6.50 ms** | 5.32 ms | 8.41 ms | Precomputed walk-forward evaluation matrix |
+| `/api/v1/audit` | GET | **7.20 ms** | 6.45 ms | 8.10 ms | Decision log query with role/action filters |
 
 ---
 
@@ -59,4 +62,5 @@ Measured across 5 seeds, 4 weekly cycles (28 days), 3 inventory scenarios (`scar
 
 * **Total Replay Optimization Passes**: 5 seeds × 4 cycles × 3 scenarios × 7 methods = **420 solver/heuristic cycles**.
 * **Replay Runtime**: **92.4 seconds** (~1.5 minutes).
-* **Evaluation Matrix Cache Size**: 48.2 kB JSON (`backend/data/evaluation_cache.json`).
+* **Evaluation Matrix Cache Size**: 48.2 kB JSON (`data/evaluation_cache.json`).
+* **Test Coverage**: 73 / 73 pytest tests passed (100% green).

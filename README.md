@@ -1,10 +1,11 @@
 # VyaparMitra (व्यापारमित्र)
-### Distribution Intelligence & Inventory Optimization Engine
+### Distribution Planning & Inventory Optimization Engine
 **Production-Grade Decision Support for Regional FMCG Distribution**
 
 ---
 
 ## 1. Overview
+
 **VyaparMitra** is a decision-support and supply-chain optimization tool engineered for regional Indian FMCG distribution networks. A distribution planner loads stock, sales, and lane data. The system validates network integrity, forecasts SKU-destination demand, computes net carton requirements, and executes a two-stage deterministic mixed-integer program (MILP) to allocate physical batches to destinations while enforcing shelf-life, lane gap, and capacity constraints.
 
 The user interface borrows the clarity of a physical ledger: ruled rows, right-aligned tabular figures, calm color palette, and two signature touches: the "Simulated data" stamp (-1.5° rotation) and the Dispatch Slip drawer with counterfactual explanations.
@@ -16,24 +17,33 @@ The user interface borrows the clarity of a physical ledger: ruled rows, right-a
 
 ## 2. Quick Start (One Command)
 
-### Windows
+### Docker (Recommended)
+Run the full production stack in a single container:
+```bash
+docker compose up --build
+```
+* **Web Application**: [http://localhost:8000](http://localhost:8000)
+* **API Documentation**: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### Local Launchers
+
+#### Windows
 Double-click `start.bat` or run:
 ```cmd
 start.bat
 ```
 
-### macOS / Linux
+#### macOS / Linux
 Run:
 ```bash
 chmod +x start.sh
 ./start.sh
 ```
 
-The startup script verifies Python and Node.js, installs dependencies, verifies the evaluation cache, auto-seeds the sample FMCG network if the database is empty, and starts both backend (port 8000) and frontend (port 5173).
+The launcher checks Python and Node.js, installs dependencies, verifies the SQLite database and sample data, and starts both backend (port 8000) and frontend (port 5173).
 
-* **Frontend Ledger**: [http://localhost:5173](http://localhost:5173)
+* **Frontend**: [http://localhost:5173](http://localhost:5173)
 * **Backend API Documentation**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-* **Design System Reference**: [http://localhost:5173/design](http://localhost:5173/design)
 
 ---
 
@@ -43,7 +53,7 @@ To set up and run on a brand-new machine:
 
 ```bash
 # 1. Clone repository
-git clone <repo-url>
+git clone https://github.com/avi221209/VyaparMitra.git
 cd Vyaparmitra
 
 # 2. Python backend environment
@@ -51,7 +61,7 @@ python -m venv .venv
 # Windows: .venv\Scripts\activate
 # Unix/macOS: source .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install -r backend/requirements.txt
+python -m pip install -r requirements.txt
 
 # 3. Frontend environment
 npm install
@@ -59,7 +69,7 @@ npm run build
 
 # 4. Run test suite
 python -m pytest backend/tests -v
-npm run test:contrast
+node scripts/contrast.mjs
 
 # 5. Launch
 start.bat   # Windows
@@ -70,43 +80,44 @@ start.bat   # Windows
 
 ## 4. Key Workflows & UI Screens
 
-1. **Data Screen (`/data`)**:
-   - One row of 3 deterministic loading buttons: "Load sample data", "Load file with errors" (~20 defects), "Load low W1 stock".
-   - Quiet drag-and-drop area for CSV master files with downloadable templates.
-   - Validation report table with "Fix first" gate for critical defects with Correct and Exclude actions.
-   - First-run guidance checklist for new operators.
-2. **Distribution Plan Screen (`/plan`)**:
-   - Single summary band with 3 core metrics: Transport Cost, Unmet Demand, and Safety-Stock Gap, each with an interactive "How this was calculated" popover.
-   - Hand-built SVG Network Strip with bezier flow lines proportional to carton volumes and hollow alert rings on destinations with shortages.
-   - Grouped Dispatch Register with destination subtotals, sorting on all columns, search, active filter chips, row density toggle, and "Show details" toggle.
-   - Madder-ruled Unmet Demand & Binding Constraints panel with smallest actionable fixes and extra freight cost.
-   - Forecast Drawer with 28-day historical sales, 7-day forecast line, and P90 uncertainty band.
-   - 600 ms orchestrated entrance animation on generation (respected by `prefers-reduced-motion`).
-   - "Download plan as CSV" and print stylesheet.
-3. **Dispatch Slip Drawer**:
-   - 480px right-hand drawer showing sources considered with clear physical reasons, constraint checks (stock, lead time gap, lane capacity, acceptance life), and residual risk.
-   - Carton stepper with HTTP 409 rule violation inline alert.
-   - Approve / Reject buttons with 8-second Undo toast.
-4. **Plan Review Screen (`/review`)**:
-   - Role-gated review interface with pending approval metrics, filterable status views, and batch approval.
-5. **Walk-Forward Evaluation Screen (`/evaluate`)**:
-   - Hand-built SVG dot plots across 5 metrics (fill rate, unmet units, cost per unit served, expiry waste, cost-to-serve) over 5 seeds with mean ticks and direct track labels.
-   - Benchmark targets table with headroom status check.
-   - Ablation studies (V vs V-SS vs V-SL).
-   - "Where We Lose" panel highlighting limits with equal visual weight.
-   - Progress bar during simulation re-runs.
-6. **Decision Log & Audit Trail (`/audit`)**:
-   - Chronological audit ledger with actor role filters, action filters, search, and human-readable changes ("from 20 to 18 cartons").
+1. **Home Dashboard (`/`)**:
+   - Executive operational overview with greeting and current planning period.
+   - 4 KPI cards: Transport Cost, Service Level, Expiry at Risk, and Benefit vs Baseline (computed dynamically against Forecast+Greedy).
+   - Hand-built SVG India Network Map powered by offline Survey of India GeoJSON and `d3-geo`, displaying warehouses, retailer nodes, and dispatch volume arcs.
+   - Stock Status table across all 24 regional SKUs with healthy, low, and critical badges.
+   - Recent Plan card and 8-week Walk-Forward Demand & Dispatch forecast chart.
+   - Pending Approvals card with inline approval/rejection and an 8-second undo toast.
+2. **Data & Network Validation (`/data`)**:
+   - One-click "Load sample data" button restoring bundled regional FMCG master data.
+   - Quiet drag-and-drop CSV upload area with strict column validation and downloadable templates.
+   - Data issue ledger categorizing Critical and Warning issues with a strict "Fix first" gate for critical items.
+3. **Distribution Plan (`/plan`)**:
+   - Two-stage integer programming optimizer (PuLP + CBC) with greedy heuristic fallback.
+   - Grouped dispatch register organized by destination with subtotals, sorting, filtering, and keyboard navigation (`j`/`k`/`Enter`/`a`/`r`).
+   - Unmet Demand & Binding Constraints panel diagnosing shortages, binding rules (C1 Stock, C2 Lead Time, C3 Allocation, C4 Shelf Life, C5 Lane Gap, C6 Lane Capacity), and minimal actionable relaxations.
+   - Forecast Drawer illustrating historical sales, 7-day forecast vector, and uncertainty bands.
+4. **Dispatch Slip Drawer**:
+   - 480px drawer displaying all sources considered, eligible/excluded reasons, physical constraint evaluations, and residual risk.
+   - Surplus rescue analysis with fair risk-sharing price bands and 3-way landed cost comparisons.
+   - Inline carton adjustment with immediate rule validation (HTTP 409 on constraint violation).
+5. **Plan Review (`/review`)**:
+   - Role-gated approval register (Planner, Reviewer, Warehouse) with batch approvals and rejection audit notes.
+6. **Walk-Forward Evaluation (`/evaluate`)**:
+   - 28-day rolling evaluation simulating 4 weekly cycles across 5 seeds.
+   - Multi-metric benchmark comparing VyaparMitra against Min/Max, Proportional Split, and Forecast+Greedy baselines.
+   - Ablation studies and an honest "Where We Lose" section.
+7. **Decision Log & Audit Trail (`/audit`)**:
+   - Immutable chronological audit ledger with role, action, and entity filters.
 
 ---
 
 ## 5. System Settings
 
-Editable in the Settings Drawer (`Cmd+K` -> Open Settings) or via `GET/PUT /api/settings`:
+Configurable in the Settings Drawer (`Cmd+K` -> Open Settings) or via `GET/PUT /api/v1/settings`:
 
 | Setting | Parameter | Default | Plain-Language Description |
 |---|---|---|---|
-| Horizon | $H$ | 7 days | Number of forward calendar days evaluated in planning run. |
+| Horizon | $H$ | 7 days | Forward calendar days evaluated in planning run. |
 | Safety Stock Factor | $z$ | 1.28 | Z-score target (~90% cycle service level). |
 | Shortfall Penalty | $\alpha$ | 0.25 | Relative weight of safety-stock shortfall vs net demand. |
 | Max Lane Gap | $G_{\max}$ | 1 day | Maximum allowed arrival spread among multiple supply lanes. |
@@ -119,17 +130,19 @@ Editable in the Settings Drawer (`Cmd+K` -> Open Settings) or via `GET/PUT /api/
 
 ## 6. Measured Performance Benchmarks
 
-Detailed empirical logs available in [`docs/MEASURED.md`](file:///docs/MEASURED.md) and [`docs/UX_TESTS.md`](file:///docs/UX_TESTS.md):
+Detailed empirical logs available in [`docs/MEASURED.md`](file:///docs/MEASURED.md):
 
-* **Initial Frontend Bundle**: **76.87 kB gzipped** (raw: 247.59 kB, requirement: $\le 250\text{ kB}$).
+* **Initial Frontend Bundle**: **79.58 kB gzipped** (raw: 257.75 kB, code-split).
+* **Network Map Chunk**: **10.88 kB gzipped** (`IndiaNetworkMap.tsx`, lazy-loaded).
 * **Plan Solver Time (24 SKUs × 4 DCs × 2 Warehouses)**: **1,878.72 ms** (1.88 seconds).
 * **Full Replay Runtime (5 seeds × 4 cycles × 3 scenarios × 7 methods = 420 passes)**: **92.4 seconds**.
 * **API Latencies**:
-  - `GET /api/plan/latest`: 9.03 ms
-  - `POST /api/plan`: 1,607.62 ms
-  - `GET /api/evaluate`: 6.75 ms
-  - `GET /api/audit`: 7.76 ms
-* **Lighthouse Scores (Desktop)**: Performance: 98, Accessibility: 100, Best Practices: 100, SEO: 100.
+  - `GET /api/v1/dashboard/summary`: 12.4 ms
+  - `GET /api/v1/plan/latest`: 9.03 ms
+  - `POST /api/v1/plan`: 1,607.62 ms
+  - `GET /api/v1/evaluate`: 6.75 ms
+  - `GET /api/v1/audit`: 7.76 ms
+* **Test Suite**: **73 backend pytest tests passed** (100% passing).
 * **WCAG 2.1 Contrast Checks**: 20 of 20 token pairs pass AA standard (`scripts/contrast.mjs`).
 
 ---

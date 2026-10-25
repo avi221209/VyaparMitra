@@ -152,3 +152,18 @@ def test_fix_first_gate_and_resolution_endpoints(client: TestClient, session: Se
     )
     assert ack_res.status_code == 200
     assert ack_res.json()["issue"]["status"] == "acknowledged"
+
+
+def test_upload_size_limit_rejection(client: TestClient, monkeypatch):
+    """Verify that oversized uploads trigger HTTP 413 Request Entity Too Large."""
+    from backend.app.config import settings
+    monkeypatch.setattr(settings, "MAX_UPLOAD_SIZE_BYTES", 50)
+
+    oversized_csv = "id,name,category,unit,case_pack,load_per_carton,unit_cost,unit_margin,min_remaining_shelf_days\n" * 5
+    files = {"file": ("products.csv", io.BytesIO(oversized_csv.encode("utf-8")), "text/csv")}
+    data = {"table_name": "products"}
+
+    res = client.post("/api/v1/data/upload", files=files, data=data, headers={"X-Role": "planner"})
+    assert res.status_code == 413
+    assert "maximum upload size limit" in res.json()["detail"]
+

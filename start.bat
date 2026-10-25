@@ -29,13 +29,7 @@ if not exist "node_modules\" (
     call npm install
 )
 
-:: 3. Check Evaluation Benchmark Cache
-if not exist "data\evaluation_cache.json" (
-    echo Evaluation benchmark cache missing. Running initial benchmark...
-    python backend\scripts\run_benchmark.py
-)
-
-:: 4. Start backend and frontend
+:: 3. Start backend and frontend
 echo Starting VyaparMitra Backend (FastAPI on http://127.0.0.1:8000)...
 start "VyaparMitra Backend" cmd /k "python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000"
 
