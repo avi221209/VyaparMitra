@@ -1,6 +1,7 @@
 import io
+import re
 from datetime import date, datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, UploadFile, status
 from fastapi.responses import PlainTextResponse
 import pandas as pd
@@ -80,32 +81,181 @@ ENTITY_ALIASES: Dict[str, str] = {
     # Products
     "product": "products",
     "products": "products",
+    "product_master": "products",
+    "products_master": "products",
+    "sku": "products",
+    "skus": "products",
+    "item": "products",
+    "items": "products",
+    "catalog": "products",
+    "product_catalog": "products",
+    "sample_products": "products",
+    "sample_product": "products",
+    "vyaparmitra_products": "products",
+    "vyaparmitra_product": "products",
+    "vyaparmitra_sample_products": "products",
+    "vyaparmitra_sample_product": "products",
+
     # Locations
     "location": "locations",
     "locations": "locations",
+    "location_master": "locations",
+    "locations_master": "locations",
     "warehouse": "locations",
     "warehouses": "locations",
     "destination": "locations",
     "destinations": "locations",
+    "store": "locations",
+    "stores": "locations",
+    "depot": "locations",
+    "depots": "locations",
+    "node": "locations",
+    "nodes": "locations",
+    "sample_locations": "locations",
+    "sample_location": "locations",
+    "vyaparmitra_locations": "locations",
+    "vyaparmitra_location": "locations",
+    "vyaparmitra_sample_locations": "locations",
+    "vyaparmitra_sample_location": "locations",
+
     # Lanes
     "lane": "lanes",
     "lanes": "lanes",
+    "route": "lanes",
+    "routes": "lanes",
+    "transit": "lanes",
+    "shipping_lane": "lanes",
+    "shipping_lanes": "lanes",
+    "freight": "lanes",
+    "sample_lanes": "lanes",
+    "sample_lane": "lanes",
+    "vyaparmitra_lanes": "lanes",
+    "vyaparmitra_lane": "lanes",
+    "vyaparmitra_sample_lanes": "lanes",
+    "vyaparmitra_sample_lane": "lanes",
+
     # Batches
     "batch": "batches",
     "batches": "batches",
     "inventory_batch": "batches",
     "inventory_batches": "batches",
+    "lot": "batches",
+    "lots": "batches",
+    "expiry": "batches",
+    "expiries": "batches",
+    "sample_batches": "batches",
+    "sample_batch": "batches",
+    "vyaparmitra_batches": "batches",
+    "vyaparmitra_batch": "batches",
+    "vyaparmitra_sample_batches": "batches",
+    "vyaparmitra_sample_batch": "batches",
+
     # Inventory snapshots
     "inventory": "inventory",
     "inventory_snapshot": "inventory",
     "inventory_snapshots": "inventory",
+    "snapshot": "inventory",
     "snapshots": "inventory",
+    "stock": "inventory",
+    "stocks": "inventory",
+    "stock_level": "inventory",
+    "stock_levels": "inventory",
+    "on_hand": "inventory",
+    "sample_inventory": "inventory",
+    "sample_inventory_snapshot": "inventory",
+    "sample_inventory_snapshots": "inventory",
+    "vyaparmitra_inventory": "inventory",
+    "vyaparmitra_inventory_snapshot": "inventory",
+    "vyaparmitra_inventory_snapshots": "inventory",
+    "vyaparmitra_sample_inventory": "inventory",
+    "vyaparmitra_sample_inventory_snapshot": "inventory",
+    "vyaparmitra_sample_inventory_snapshots": "inventory",
+
     # Sales daily / sales history
     "sales": "sales",
+    "sale": "sales",
     "sales_daily": "sales",
     "sales_history": "sales",
     "daily_sales": "sales",
+    "demand": "sales",
+    "consumption": "sales",
+    "sample_sales": "sales",
+    "sample_sales_daily": "sales",
+    "vyaparmitra_sales": "sales",
+    "vyaparmitra_sales_daily": "sales",
+    "vyaparmitra_sample_sales": "sales",
+    "vyaparmitra_sample_sales_daily": "sales",
 }
+
+
+def resolve_canonical_entity(
+    name: Optional[str] = None,
+    columns: Optional[Iterable[str]] = None,
+) -> Optional[str]:
+    """
+    Resolve a canonical entity name ('products', 'locations', 'sales', 'inventory', 'batches', 'lanes')
+    from either a candidate name (table_name or filename) and/or CSV columns.
+    """
+    if name:
+        raw = str(name).lower().strip()
+        for ext in [".csv", ".tsv", ".txt"]:
+            if raw.endswith(ext):
+                raw = raw[: -len(ext)]
+        raw = raw.strip()
+
+        # 1. Direct alias match
+        if raw in ENTITY_ALIASES:
+            return ENTITY_ALIASES[raw]
+
+        # 2. Strip standard prefixes/suffixes
+        stripped = raw
+        for prefix in ["vyaparmitra_sample_", "vyaparmitra_", "sample_", "fmcg_", "test_", "demo_"]:
+            if stripped.startswith(prefix):
+                stripped = stripped[len(prefix):]
+                break
+        for suffix in ["_template", "_sample", "_export", "_data", "_dataset", "_file", "_records", "_master", "_list"]:
+            if stripped.endswith(suffix):
+                stripped = stripped[:-len(suffix)]
+                break
+        if stripped in ENTITY_ALIASES:
+            return ENTITY_ALIASES[stripped]
+
+        # 3. Token check
+        tokens = [t for t in re.split(r"[_\-\s\.]+", raw) if t]
+        for token in reversed(tokens):
+            if token in ENTITY_ALIASES:
+                return ENTITY_ALIASES[token]
+
+    # 4. Column signature inspection
+    if columns is not None:
+        cols = {str(c).lower().strip() for c in columns}
+
+        # Lanes: requires source_id and destination_id
+        if {"source_id", "destination_id"}.issubset(cols):
+            return "lanes"
+
+        # Batches: requires expiry_date and (batch_code or quantity)
+        if "expiry_date" in cols and ("batch_code" in cols or "quantity" in cols):
+            return "batches"
+
+        # Inventory: requires location_id, product_id, and (on_hand or snapshot_date or reserved or in_transit)
+        if {"product_id", "location_id"}.issubset(cols) and ("on_hand" in cols or "snapshot_date" in cols or "reserved" in cols or "in_transit" in cols):
+            return "inventory"
+
+        # Sales: requires units and date
+        if {"units", "date"}.issubset(cols) and ("product_id" in cols or "location_id" in cols):
+            return "sales"
+
+        # Products: case_pack or load_per_carton or unit_margin or min_remaining_shelf_days
+        product_indicators = {"case_pack", "load_per_carton", "unit_margin", "min_remaining_shelf_days", "category"}
+        if len(product_indicators.intersection(cols)) >= 2 or "case_pack" in cols:
+            return "products"
+
+        # Locations: requires type and (city or state or name) without product_id
+        if "type" in cols and ("city" in cols or "state" in cols or "name" in cols) and "product_id" not in cols:
+            return "locations"
+
+    return None
 
 
 def get_current_role(x_role: str = Header(default="planner")) -> str:
@@ -125,8 +275,7 @@ def get_current_role(x_role: str = Header(default="planner")) -> str:
 @router.get("/template/{name}", response_class=PlainTextResponse)
 def get_csv_template(name: str):
     """Download clean CSV template for a data entity with alias support."""
-    raw_name = name.lower().strip().replace(".csv", "")
-    canonical_name = ENTITY_ALIASES.get(raw_name)
+    canonical_name = resolve_canonical_entity(name=name)
     if not canonical_name or canonical_name not in TEMPLATES:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -137,7 +286,8 @@ def get_csv_template(name: str):
     header_line = ",".join(meta["columns"]) + "\n"
     content = header_line + meta["sample"]
 
-    filename = f"{raw_name}_template.csv"
+    clean_name = name.lower().strip().replace(".csv", "")
+    filename = f"{clean_name}_template.csv"
     return PlainTextResponse(
         content=content,
         media_type="text/csv",
@@ -156,25 +306,12 @@ async def upload_csv_file(
     role: str = Depends(get_current_role),
 ):
     """
-    Accepts CSV upload in exact template format.
-    Validates that mandatory columns are present; missing columns are explicitly named.
-    Inserts data and runs validation automatically.
+    Accepts CSV upload via drag-and-drop or file picker.
+    Resolves entity using table_name, file name, and CSV column signatures.
+    Validates mandatory columns, filters safe model fields, handles empty values,
+    inserts records, and automatically triggers validation.
     """
-    # Deduce entity type from table_name or filename
     filename = file.filename or ""
-    inferred_name = (table_name or filename).lower().replace(".csv", "").strip()
-
-    # Map aliases (e.g. inventory_batches.csv -> batches, sales_history.csv -> sales)
-    canonical_name = ENTITY_ALIASES.get(inferred_name)
-
-    if not canonical_name or canonical_name not in TEMPLATES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unrecognized entity/table '{inferred_name}'. Allowed: {sorted(list(TEMPLATES.keys()))} (Supported aliases: {sorted(list(ENTITY_ALIASES.keys()))})",
-        )
-
-    meta = TEMPLATES[canonical_name]
-    required_cols = set(meta["columns"])
 
     try:
         content_bytes = await file.read()
@@ -183,11 +320,22 @@ async def upload_csv_file(
                 status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                 detail=f"File exceeds maximum upload size limit of {settings.MAX_UPLOAD_SIZE_BYTES // (1024 * 1024)} MB.",
             )
+        if not content_bytes or len(content_bytes.strip()) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Uploaded file is empty (0 bytes). Please upload a valid CSV file.",
+            )
+
         df = pd.read_csv(io.BytesIO(content_bytes))
         if len(df) > settings.MAX_UPLOAD_ROWS:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"CSV row count ({len(df)}) exceeds the maximum allowed limit of {settings.MAX_UPLOAD_ROWS} rows.",
+            )
+        if len(df) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CSV file contains no data rows.",
             )
     except HTTPException:
         raise
@@ -197,8 +345,25 @@ async def upload_csv_file(
             detail=f"Failed to parse CSV file: {str(e)}",
         )
 
-    # Check for missing mandatory columns
     actual_cols = {str(c).strip() for c in df.columns}
+
+    # Resolve entity canonical name from candidate name or column signature
+    candidate_identifier = table_name or filename
+    canonical_name = resolve_canonical_entity(name=candidate_identifier, columns=actual_cols)
+
+    if not canonical_name or canonical_name not in TEMPLATES:
+        inferred_label = candidate_identifier.lower().replace(".csv", "").strip() or "unknown"
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Unrecognized entity/table '{inferred_label}'. "
+                f"Allowed: {sorted(list(TEMPLATES.keys()))}. "
+                f"Could not identify supported entity from filename or columns {sorted(list(actual_cols))}."
+            ),
+        )
+
+    meta = TEMPLATES[canonical_name]
+    required_cols = set(meta["columns"])
     missing_cols = sorted(list(required_cols - actual_cols))
 
     if missing_cols:
@@ -208,6 +373,7 @@ async def upload_csv_file(
         )
 
     model_cls = meta["model"]
+    model_fields = model_cls.model_fields
 
     # Delete existing rows for this table to replace cleanly
     existing_records = list(session.exec(select(model_cls)).all())
@@ -218,11 +384,12 @@ async def upload_csv_file(
     # Parse and insert records
     inserted_count = 0
     records = df.to_dict(orient="records")
-    for row in records:
-        # Clean null values and convert date strings
+    for row_idx, row in enumerate(records, start=1):
         cleaned_row = {}
         for k, v in row.items():
             k_clean = str(k).strip()
+            if k_clean not in model_fields:
+                continue
             if pd.isna(v):
                 cleaned_row[k_clean] = None
             elif "date" in k_clean and isinstance(v, str):
@@ -233,12 +400,39 @@ async def upload_csv_file(
             else:
                 cleaned_row[k_clean] = v
 
-        cleaned_row["is_simulated"] = True
-        record_obj = model_cls(**cleaned_row)
-        session.add(record_obj)
-        inserted_count += 1
+        # Handle autoincrement ID for models where id is Optional[int] (e.g. SalesDaily, InventorySnapshot)
+        if "id" in cleaned_row:
+            val = cleaned_row["id"]
+            if val is None or val == "" or pd.isna(val):
+                del cleaned_row["id"]
+            else:
+                try:
+                    cleaned_row["id"] = int(val)
+                except (ValueError, TypeError):
+                    field_info = model_fields["id"]
+                    if field_info.annotation != str:
+                        del cleaned_row["id"]
 
-    session.commit()
+        cleaned_row["is_simulated"] = True
+        try:
+            record_obj = model_cls(**cleaned_row)
+            session.add(record_obj)
+            inserted_count += 1
+        except Exception as err:
+            session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Validation error in row {row_idx} for '{canonical_name}': {str(err)}",
+            )
+
+    try:
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Database integrity error inserting '{canonical_name}': {str(e)}",
+        )
 
     # Automatically re-run validation
     validator = DataValidator(session)
@@ -259,8 +453,10 @@ async def upload_csv_file(
     return {
         "status": "success",
         "table": canonical_name,
+        "entity": canonical_name,
         "rows_inserted": inserted_count,
         "validation_issues_detected": len(detected_issues),
+        "message": f"Successfully ingested {inserted_count} rows for '{canonical_name}'. Detected {len(detected_issues)} validation issues.",
         "is_simulated": True,
     }
 

@@ -40,6 +40,9 @@ export function DataPage() {
   const [selectedIssueForCorrection, setSelectedIssueForCorrection] = useState<ValidationIssueItem | null>(null);
   const [correctionNote, setCorrectionNote] = useState('');
   const [dragActive, setDragActive] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadingName, setUploadingName] = useState('');
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Fetch status to check if data exists
   const { data: statusData, isLoading: statusLoading } = useQuery({
@@ -128,6 +131,70 @@ export function DataPage() {
     },
   });
 
+  const handleFileUpload = async (file: File) => {
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.csv') && file.type !== 'text/csv') {
+      toast({
+        type: 'error',
+        message: `File "${file.name}" is not a CSV. Please upload a .csv file.`,
+      });
+      return;
+    }
+
+    if (file.size === 0) {
+      toast({
+        type: 'error',
+        message: `File "${file.name}" is empty (0 bytes).`,
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadingName(file.name);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await apiFetch<any>('/api/v1/data/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['system-status'] });
+      queryClient.invalidateQueries({ queryKey: ['validation-issues'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['locations'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['latest-plan'] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs'] });
+      window.dispatchEvent(new Event('role-changed'));
+
+      const entityName = res.table || res.entity || 'records';
+      const rowCount = res.rows_inserted ?? 0;
+      const issuesCount = res.validation_issues_detected ?? 0;
+
+      toast({
+        type: 'success',
+        message: `Ingested ${rowCount} ${entityName} rows from "${file.name}". ${
+          issuesCount > 0 ? `${issuesCount} validation issue(s) detected.` : 'No validation issues.'
+        }`,
+      });
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        message: err.message || `Failed to ingest ${file.name}`,
+      });
+    } finally {
+      setIsUploading(false);
+      setUploadingName('');
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -138,34 +205,18 @@ export function DataPage() {
     }
   };
 
-  const handleDrop = async (e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      const formData = new FormData();
-      formData.append('file', file);
-      try {
-        await apiFetch('/api/v1/data/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        queryClient.invalidateQueries({ queryKey: ['system-status'] });
-        queryClient.invalidateQueries({ queryKey: ['validation-issues'] });
-        queryClient.invalidateQueries({ queryKey: ['products'] });
-        queryClient.invalidateQueries({ queryKey: ['locations'] });
-        queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
-        toast({
-          type: 'success',
-          message: `Ingested ${file.name} successfully`,
-        });
-      } catch (err: any) {
-        toast({
-          type: 'error',
-          message: err.message || `Failed to ingest ${file.name}`,
-        });
-      }
+      handleFileUpload(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFileUpload(e.target.files[0]);
     }
   };
 
@@ -391,7 +442,7 @@ export function DataPage() {
         </div>
       </section>
 
-      {/* 2. CSV DROP AREA */}
+      {/* 2. CSV DROP & FILE PICKER AREA */}
       <section
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
@@ -400,14 +451,52 @@ export function DataPage() {
         className={`border border-dashed rounded-control p-6 bg-surface flex flex-col items-center justify-center text-center transition-colors ${
           dragActive ? 'border-brand bg-brand-wash/30' : 'border-line'
         }`}
+        aria-label="CSV upload drop area"
       >
-        <UploadCloud className="w-8 h-8 text-ink-3 mb-2" strokeWidth={1.5} />
-        <p className="text-body text-ink font-medium">
-          Or drop your own CSV files here
-        </p>
-        <p className="text-meta text-ink-3 mt-0.5 mb-3">
-          Products, locations, sales, inventory, batches, and lanes — one file per type.
-        </p>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".csv,text/csv"
+          onChange={handleFileInputChange}
+          className="hidden"
+          id="csv-file-input"
+          data-testid="csv-file-input"
+        />
+
+        {isUploading ? (
+          <div className="flex flex-col items-center justify-center py-2" role="status" aria-live="polite">
+            <div className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin mb-2" />
+            <p className="text-body text-ink font-medium">Uploading and validating {uploadingName}...</p>
+            <p className="text-meta text-ink-3 mt-0.5 mb-3">Parsing headers, ingesting records, and running data quality rules.</p>
+          </div>
+        ) : (
+          <>
+            <UploadCloud className="w-8 h-8 text-ink-3 mb-2" strokeWidth={1.5} />
+            <p className="text-body text-ink font-medium">
+              Drop your CSV file here, or{' '}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-brand hover:underline font-semibold focus:outline-none cursor-pointer"
+              >
+                browse files
+              </button>
+            </p>
+            <p className="text-meta text-ink-3 mt-0.5 mb-3">
+              Products, locations, sales, inventory, batches, and lanes — auto-detected by file name or header signature.
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              className="mb-4"
+              icon={<UploadCloud className="w-4 h-4 text-brand" strokeWidth={1.5} />}
+            >
+              Select CSV file
+            </Button>
+          </>
+        )}
 
         {/* Template Links */}
         <div className="flex flex-wrap items-center justify-center gap-3 text-meta text-ink-2 border-t border-line pt-3 w-full max-w-2xl">
