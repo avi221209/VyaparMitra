@@ -39,8 +39,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     with Session(engine) as session:
         loc_count = session.exec(select(func.count(Location.id))).one()
         if loc_count == 0:
-            simulator = FMCGSimulator(session=session)
-            simulator.seed_deterministic(variant="normal", seed=1, scenario="balanced")
+            simulator = FMCGSimulator(seed=1, variant="normal", scenario="balanced")
+            simulator.seed_database(session)
     yield
 
 

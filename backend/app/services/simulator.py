@@ -44,6 +44,7 @@ class FMCGSimulator:
         variant: str = "normal",
         heavy_tail: bool = True,
         level_shift: bool = True,
+        session: Optional[Session] = None,
     ):
         self.seed = seed
         self.base_date = base_date
@@ -51,6 +52,7 @@ class FMCGSimulator:
         self.variant = variant.lower() if isinstance(variant, str) else "normal"
         self.heavy_tail = heavy_tail
         self.level_shift = level_shift
+        self.session = session
 
         # Scenario stock multipliers
         scenario_multipliers = {
@@ -994,6 +996,26 @@ class FMCGSimulator:
             },
             "defect_manifest": self.defect_manifest,
         }
+
+    def seed_deterministic(
+        self,
+        session: Optional[Session] = None,
+        variant: Optional[str] = None,
+        seed: Optional[int] = None,
+        scenario: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Convenience alias for seed_database supporting parameter overrides."""
+        target_session = session or getattr(self, "session", None)
+        if target_session is None:
+            raise ValueError("A database Session is required to seed the database.")
+        if seed is not None:
+            self.seed = seed
+            self.rng = np.random.default_rng(seed)
+        if variant is not None:
+            self.variant = variant.lower()
+        if scenario is not None:
+            self.scenario = scenario.lower()
+        return self.seed_database(target_session)
 
     def export_to_csv(self, output_dir: Path = DATA_DIR) -> Dict[str, str]:
         """Export generated simulation data to CSV and write manifest.json."""

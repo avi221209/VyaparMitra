@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import pytest
 from sqlmodel import Session, select
 from backend.app.models import Batch, DecisionLog, InventorySnapshot, Lane, Location, Product, SalesDaily, ValidationIssue
 from backend.app.services.simulator import FMCGSimulator
@@ -171,3 +172,48 @@ def test_seed_database_and_export_csv(session: Session, tmp_path: Path):
     assert manifest_file.exists()
     defect_manifest_file = tmp_path / "defect_manifest.json"
     assert defect_manifest_file.exists()
+
+
+def test_simulator_constructor_compatibility(session: Session):
+    """Test that FMCGSimulator constructs cleanly with or without session keyword argument."""
+    # 1. Without session keyword
+    sim1 = FMCGSimulator(seed=1, variant="normal", scenario="balanced")
+    assert sim1.session is None
+    res1 = sim1.seed_database(session)
+    assert res1["counts"]["locations"] == 6
+
+    # 2. With session keyword
+    sim2 = FMCGSimulator(session=session, seed=1, variant="normal", scenario="balanced")
+    assert sim2.session is session
+    # Test seed_deterministic alias
+    res2 = sim2.seed_deterministic(variant="normal", seed=1, scenario="balanced")
+    assert res2["counts"]["locations"] == 6
+
+
+@pytest.mark.anyio
+async def test_fastapi_lifespan_startup_on_clean_db():
+    """Verify that FastAPI lifespan executes cleanly on an empty database without raising TypeError."""
+    from backend.app.main import lifespan, app
+    from sqlmodel import SQLModel, create_engine, func
+    from sqlmodel.pool import StaticPool
+    import backend.app.main as main_module
+
+    # Create temporary isolated in-memory engine
+    clean_engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    SQLModel.metadata.create_all(clean_engine)
+
+    orig_engine = main_module.engine
+    main_module.engine = clean_engine
+
+    try:
+        # Run lifespan context manager (triggers init_db and seed_database)
+        async with lifespan(app):
+            with Session(clean_engine) as session:
+                loc_count = session.exec(select(func.count(Location.id))).one()
+                assert loc_count == 6
+    finally:
+        main_module.engine = orig_engine
