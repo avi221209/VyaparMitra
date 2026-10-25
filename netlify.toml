@@ -1,0 +1,46 @@
+# =====================================================================
+# VyaparMitra - Netlify Production Configuration
+# =====================================================================
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# ---------------------------------------------------------------------
+# Option A: Netlify Reverse Proxy to Backend (Recommended)
+# If you deploy your backend on Render, Railway, Fly.io, or your own server,
+# you can uncomment this redirect and set your backend URL.
+# Netlify will proxy all /api/* requests to your backend transparently,
+# bypassing CORS and domain restrictions.
+# ---------------------------------------------------------------------
+# [[redirects]]
+#   from = "/api/*"
+#   to = "https://YOUR-BACKEND.onrender.com/api/:splat"
+#   status = 200
+#   force = true
+
+# ---------------------------------------------------------------------
+# Single Page App (SPA) Routing Fallback
+# Ensures client-side routes (/data, /plan, /review, /evaluate, /audit)
+# are routed to index.html instead of returning 404s.
+# ---------------------------------------------------------------------
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# ---------------------------------------------------------------------
+# Production Security & Performance Headers
+# ---------------------------------------------------------------------
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

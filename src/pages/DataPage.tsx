@@ -11,7 +11,7 @@ import {
   EmptyState,
   useToast,
 } from '../components/ui';
-import { apiFetch } from '../lib/api';
+import { apiFetch, getApiUrl } from '../lib/api';
 import {
   AlertCircle,
   AlertTriangle,
@@ -413,7 +413,7 @@ export function DataPage() {
         <div className="flex flex-wrap items-center justify-center gap-3 text-meta text-ink-2 border-t border-line pt-3 w-full max-w-2xl">
           <span className="text-ink-3">Download CSV templates:</span>
           <a
-            href="/api/v1/data/template/products"
+            href={getApiUrl('/api/v1/data/template/products')}
             download="products_template.csv"
             className="hover:text-brand hover:underline"
           >
@@ -421,7 +421,7 @@ export function DataPage() {
           </a>
           <span className="text-line">|</span>
           <a
-            href="/api/v1/data/template/locations"
+            href={getApiUrl('/api/v1/data/template/locations')}
             download="locations_template.csv"
             className="hover:text-brand hover:underline"
           >
@@ -429,7 +429,7 @@ export function DataPage() {
           </a>
           <span className="text-line">|</span>
           <a
-            href="/api/v1/data/template/lanes"
+            href={getApiUrl('/api/v1/data/template/lanes')}
             download="lanes_template.csv"
             className="hover:text-brand hover:underline"
           >
@@ -437,7 +437,7 @@ export function DataPage() {
           </a>
           <span className="text-line">|</span>
           <a
-            href="/api/v1/data/template/batches"
+            href={getApiUrl('/api/v1/data/template/batches')}
             download="batches_template.csv"
             className="hover:text-brand hover:underline"
           >
@@ -445,7 +445,7 @@ export function DataPage() {
           </a>
           <span className="text-line">|</span>
           <a
-            href="/api/v1/data/template/inventory_snapshots"
+            href={getApiUrl('/api/v1/data/template/inventory_snapshots')}
             download="inventory_snapshots_template.csv"
             className="hover:text-brand hover:underline"
           >
@@ -453,7 +453,7 @@ export function DataPage() {
           </a>
           <span className="text-line">|</span>
           <a
-            href="/api/v1/data/template/sales_daily"
+            href={getApiUrl('/api/v1/data/template/sales_daily')}
             download="sales_daily_template.csv"
             className="hover:text-brand hover:underline"
           >

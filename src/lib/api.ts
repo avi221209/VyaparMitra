@@ -19,6 +19,18 @@ export function setStoredRole(role: DemoRole): void {
   localStorage.setItem(CURRENT_ROLE_KEY, role);
 }
 
+export function getApiUrl(path: string): string {
+  let cleanPath = path;
+  if (cleanPath.startsWith('/api/') && !cleanPath.startsWith('/api/v1/')) {
+    cleanPath = cleanPath.replace('/api/', '/api/v1/');
+  }
+  const apiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '');
+  if (apiBase && cleanPath.startsWith('/')) {
+    return `${apiBase}${cleanPath}`;
+  }
+  return cleanPath;
+}
+
 export async function apiFetch<T>(
   url: string,
   options: RequestInit = {}
@@ -32,11 +44,7 @@ export async function apiFetch<T>(
     headers.set('Content-Type', 'application/json');
   }
 
-  // Enforce /api/v1/ prefix for all endpoints
-  let finalUrl = url;
-  if (finalUrl.startsWith('/api/') && !finalUrl.startsWith('/api/v1/')) {
-    finalUrl = finalUrl.replace('/api/', '/api/v1/');
-  }
+  const finalUrl = getApiUrl(url);
 
   try {
     const response = await fetch(finalUrl, {
