@@ -44,4 +44,5 @@ Branch: `main`
 | Phase 1: Backend dashboard API | Complete | `0fa3483` | All 76 backend tests passed (122s). Implemented /api/v1/dashboard/summary, /notifications, /search, and geo service. |
 | Phase 2: App shell redesign | Complete | `dc67529` | Top bar with leaf logo, debounced search, notification bell, profile chip, sample data badge, mint-tinted sidebar, 5-step guide drawer. Build passed 20/20 contrast. |
 | Phase 3: Dashboard page | Complete | `f73f829` | DashboardPage with offline Survey of India network map, 4 KPI cards, stock status table, recent plan, forecast chart, pending approvals with 8s undo toast. Full 76 backend tests & frontend build pass. |
+| Phase 4: Scaffolding removal & cleanup | Complete | `b28305f` | Removed demo backup/seeding scripts, unified all routes to strictly /api/v1/, removed hackathon wording, added sample data loader, 73/73 tests pass, 20/20 contrast pass. |
 
