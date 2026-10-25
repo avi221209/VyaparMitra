@@ -35,3 +35,9 @@ Branch: `main`
 | Chunk 11 | `e3080c2` | `feat(review-ui): role-gated dispatch reviews, immutable decision audit ledger, and walk-forward evaluation dashboard` | Review screen, audit ledger with en-IN formatting, walk-forward benchmark charts | Pushed to GitHub |
 | Chunk 12 | `92f9896` | `test(release): demo hardening, failure drill verification, backup state, and test suites` | 62 pytest suites, failure drills checklist, video script, UI screenshots, backup state | Pushed to GitHub |
 | Chunk 13 | `784970d` | `feat: add surplus rescue, price band, explained refusals, and dead-stock warnings` | Pure deterministic surplus rescue gate, fair risk-sharing price band, 3-way landed cost comparison, dead-stock warnings, and ledger drawer UI (7/7 tests pass) | Pushed to GitHub |
+
+## Production Dashboard & Cleanup Phases
+
+| Phase | Status | Commit | Notes |
+|---|---|---|---|
+| Phase 0: Safety, baseline, plan | Complete | `55c6179` | Baseline suite: 69 passed, 0 failed. Git origin in sync. Secrets audit clean. .env.example tracked. Plan documented. |
