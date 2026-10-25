@@ -1,15 +1,6 @@
 """
 VyaparMitra - Planning, Allocation, Explanation Card & Audit API Router
-Team Stark | Triwizathon 2026 | PS2: Distribution Intelligence and Inventory Optimization Engine
-
-Endpoints:
- POST /api/plan (horizon, optional overrides) -> runs forecast (cached), requirement, eligibility, optimizer, counterfactuals; returns run id and lines
- GET /api/plan/{run_id} -> lines, totals (transport, unmet demand, safety-stock gap), unmet panel with fixes
- GET /api/plan/lines/{id} -> explanation card data (pure calculated values, no text hallucination)
- POST /api/plan/lines/{id}/approve (optional edited cartons)
- POST /api/plan/lines/{id}/reject (reason required)
- POST /api/scenario/override -> quick-edit: source stock or destination demand multiplier, returns change summary
- GET /api/audit -> complete immutable DecisionLog
+FMCG Distribution Intelligence and Inventory Optimization Engine
 """
 
 from datetime import date as dt_date, datetime as dt_datetime, timedelta
@@ -249,7 +240,6 @@ def build_domain_context(session: Session, as_of: dt_date, settings: Settings):
 # -------------------------------------------------------------------
 # 1. POST /api/plan
 # -------------------------------------------------------------------
-@router.post("/api/plan", tags=["Plan & Allocation"])
 @router.post("/api/v1/plan", tags=["Plan & Allocation"])
 def create_plan(
     payload: Optional[PlanCreateRequest] = Body(default=None),
@@ -377,7 +367,6 @@ def create_plan(
 # -------------------------------------------------------------------
 # 2. GET /api/plan/latest and GET /api/plan/{run_id}
 # -------------------------------------------------------------------
-@router.get("/api/plan/latest", tags=["Plan & Allocation"])
 @router.get("/api/v1/plan/latest", tags=["Plan & Allocation"])
 def get_latest_plan(
     session: Session = Depends(get_session),
@@ -391,7 +380,6 @@ def get_latest_plan(
     return get_plan(run_id=latest_run.id, session=session)
 
 
-@router.get("/api/plan/{run_id}", tags=["Plan & Allocation"])
 @router.get("/api/v1/plan/{run_id}", tags=["Plan & Allocation"])
 def get_plan(
     run_id: str,
@@ -517,98 +505,12 @@ def get_plan(
     }
 
 
-# -------------------------------------------------------------------
-# Backup Demo State Loader (Zero Solver)
-# -------------------------------------------------------------------
-@router.post("/api/demo/backup", tags=["Plan & Allocation"])
-@router.post("/api/v1/demo/backup", tags=["Plan & Allocation"])
-@router.post("/api/plan/load-backup", tags=["Plan & Allocation"])
-def load_backup_demo_state(
-    session: Session = Depends(get_session),
-    role: str = Depends(get_current_role),
-) -> dict:
-    """
-    Load precomputed backup demo state directly from data/backup_demo_plan.json.
-    Operates without running CBC solver, ensuring guaranteed instantaneous recovery.
-    """
-    backup_file = Path("data/backup_demo_plan.json")
-    if not backup_file.exists():
-        backup_file = Path(__file__).resolve().parents[3] / "data" / "backup_demo_plan.json"
-    if not backup_file.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Backup demo plan file 'data/backup_demo_plan.json' not found."
-        )
 
-    with open(backup_file, "r", encoding="utf-8") as f:
-        data = json.load(f)
-
-    run_id = data["run_id"]
-    planning_date_str = data.get("planning_date", "2026-10-24")
-    planning_date = dt_date.fromisoformat(planning_date_str)
-
-    # Check if run exists, remove old if re-importing
-    old_run = session.get(PlanRun, run_id)
-    if old_run:
-        session.delete(old_run)
-    old_lines = session.exec(select(PlanLine).where(PlanLine.run_id == run_id)).all()
-    for ol in old_lines:
-        session.delete(ol)
-
-    totals = data.get("totals", {})
-    plan_run = PlanRun(
-        id=run_id,
-        planning_date=planning_date,
-        status=data.get("status", "OPTIMIZED"),
-        total_cost=float(totals.get("transport_cost", totals.get("transport", 0.0))),
-        total_cartons=int(totals.get("total_cartons", 0)),
-        total_demand_cartons=int(totals.get("total_demand_cartons", 0)),
-        total_unmet_cartons=int(totals.get("unmet_demand_cartons", totals.get("unmet_demand", 0))),
-        total_unmet_safety_stock_cartons=int(totals.get("safety_stock_gap_cartons", totals.get("safety_stock_gap", 0))),
-        counterfactuals_json=json.dumps(data.get("unmet_panel", [])),
-        run_by_role="planner",
-        notes="Loaded from precomputed backup demo state",
-        is_simulated=True,
-    )
-    session.add(plan_run)
-
-    for line_data in data.get("lines", []):
-        pl = PlanLine(
-            id=line_data["id"],
-            run_id=run_id,
-            product_id=line_data["product_id"],
-            source_id=line_data["source_id"],
-            destination_id=line_data["destination_id"],
-            batch_id=line_data.get("batch_id"),
-            cartons=int(line_data["cartons"]),
-            cost=float(line_data.get("cost", 0.0)),
-            arrival_date=dt_date.fromisoformat(line_data.get("arrival_date", "2026-10-25")),
-            flags_json=json.dumps(line_data.get("flags", [])),
-            status=line_data.get("status", "PROPOSED"),
-            is_simulated=True,
-        )
-        session.add(pl)
-
-    # Add audit log entry
-    audit_entry = DecisionLog(
-        actor_role=role,
-        action="RESTORE_BACKUP",
-        note=f"Loaded backup demo state run {run_id}",
-    )
-    session.add(audit_entry)
-    session.commit()
-
-    return {
-        "message": "Backup demo plan loaded successfully into database.",
-        "run_id": run_id,
-        "plan": data,
-    }
 
 
 # -------------------------------------------------------------------
 # 3. GET /api/plan/lines/{id} (Explanation Card Data)
 # -------------------------------------------------------------------
-@router.get("/api/plan/lines/{id}", tags=["Plan & Allocation"])
 @router.get("/api/v1/plan/lines/{id}", tags=["Plan & Allocation"])
 def get_plan_line_explanation_card(
     id: str,
@@ -858,7 +760,6 @@ def get_plan_line_explanation_card(
 # -------------------------------------------------------------------
 # 4. POST /api/plan/lines/{id}/approve
 # -------------------------------------------------------------------
-@router.post("/api/plan/lines/{id}/approve", tags=["Plan & Allocation"])
 @router.post("/api/v1/plan/lines/{id}/approve", tags=["Plan & Allocation"])
 def approve_plan_line(
     id: str,
@@ -1006,7 +907,6 @@ def approve_plan_line(
 # -------------------------------------------------------------------
 # 5. POST /api/plan/lines/{id}/reject
 # -------------------------------------------------------------------
-@router.post("/api/plan/lines/{id}/reject", tags=["Plan & Allocation"])
 @router.post("/api/v1/plan/lines/{id}/reject", tags=["Plan & Allocation"])
 def reject_plan_line(
     id: str,
@@ -1076,7 +976,6 @@ def reject_plan_line(
 # -------------------------------------------------------------------
 # 6. POST /api/scenario/override
 # -------------------------------------------------------------------
-@router.post("/api/scenario/override", tags=["Scenario"])
 @router.post("/api/v1/scenario/override", tags=["Scenario"])
 def quick_edit_scenario_override(
     payload: ScenarioOverrideRequest,
@@ -1224,7 +1123,6 @@ def quick_edit_scenario_override(
 # -------------------------------------------------------------------
 # 7. GET /api/audit
 # -------------------------------------------------------------------
-@router.get("/api/audit", tags=["Audit"])
 @router.get("/api/v1/audit", tags=["Audit"])
 def get_audit_trail(
     limit: int = Query(default=100, ge=1, le=1000),
@@ -1257,7 +1155,6 @@ def get_audit_trail(
 # 8. Surplus Rescue & Dead-Stock Intelligence Endpoints
 # -------------------------------------------------------------------
 
-@router.post("/api/plan/{run_id}/rescue/apply", tags=["Plan & Allocation"])
 @router.post("/api/v1/plan/{run_id}/rescue/apply", tags=["Plan & Allocation"])
 def apply_rescue_endpoint(
     run_id: str,
@@ -1285,7 +1182,6 @@ def apply_rescue_endpoint(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-@router.post("/api/plan/{run_id}/rescue/undo", tags=["Plan & Allocation"])
 @router.post("/api/v1/plan/{run_id}/rescue/undo", tags=["Plan & Allocation"])
 def undo_rescue_endpoint(
     run_id: str,
@@ -1308,7 +1204,6 @@ def undo_rescue_endpoint(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
-@router.get("/api/surplus/listings", tags=["Plan & Allocation"])
 @router.get("/api/v1/surplus/listings", tags=["Plan & Allocation"])
 def get_surplus_listings(session: Session = Depends(get_session)) -> list[dict]:
     """
@@ -1327,7 +1222,6 @@ def get_surplus_listings(session: Session = Depends(get_session)) -> list[dict]:
     return results
 
 
-@router.get("/api/plan/{run_id}/dead-stock", tags=["Plan & Allocation"])
 @router.get("/api/v1/plan/{run_id}/dead-stock", tags=["Plan & Allocation"])
 def get_dead_stock(run_id: str, session: Session = Depends(get_session)) -> list[dict]:
     """

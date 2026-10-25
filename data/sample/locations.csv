@@ -1,0 +1,7 @@
+id,name,type,city,state,is_simulated
+W1,North Central Logistics Hub (W1),warehouse,Gurgaon,Haryana,True
+W2,Western Mother DC (W2),warehouse,Bhiwandi,Maharashtra,True
+D1,Metro Distributor East (D1),distributor,Kolkata,West Bengal,True
+D2,Central Wholesale Agency (D2),distributor,Ahmedabad,Gujarat,True
+S1,South Retail Flagship Store (S1),store,Bengaluru,Karnataka,True
+S2,Suburban Retail Mart (S2),store,Pune,Maharashtra,True

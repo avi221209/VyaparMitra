@@ -1,0 +1,25 @@
+id,name,category,unit,case_pack,load_per_carton,unit_cost,unit_margin,min_remaining_shelf_days,is_simulated
+SKU-P01,Chakki Fresh Atta 5kg,Staples,bag,4,20.0,180.0,40.0,21,True
+SKU-P02,Basmati Rice 1kg,Staples,pouch,10,10.0,95.0,25.0,21,True
+SKU-P03,Refined Sugar 1kg,Staples,pouch,20,20.0,42.0,6.0,21,True
+SKU-P04,Toor Dal Premium 1kg,Staples,pouch,15,15.0,130.0,25.0,21,True
+SKU-P05,Iodized Salt 1kg,Staples,pouch,25,25.0,20.0,5.0,21,True
+SKU-P06,Glucose Energy Biscuits 150g,Packaged Food,pack,30,6.0,15.0,5.0,21,True
+SKU-P07,Refined Sunflower Oil 1L,Packaged Food,pouch,15,14.0,125.0,20.0,21,True
+SKU-P08,Instant Masala Noodles 70g,Packaged Food,pack,48,5.0,11.0,3.0,21,True
+SKU-P09,Fresh Tomato Ketchup 500g,Packaged Food,bottle,12,7.5,85.0,20.0,21,True
+SKU-P10,Cream Choco Cookies 120g,Packaged Food,pack,24,4.0,28.0,7.0,21,True
+SKU-P11,Herbal Bath Soap 100g,Personal Care,bar,24,3.0,35.0,10.0,21,True
+SKU-P12,Anti-Dandruff Shampoo 200ml,Personal Care,bottle,16,4.0,140.0,45.0,21,True
+SKU-P13,Herbal Toothpaste 150g,Personal Care,tube,20,4.0,75.0,20.0,21,True
+SKU-P14,Daily Moisture Cream 50g,Personal Care,jar,24,2.0,95.0,30.0,21,True
+SKU-P15,Gentle Body Wash 250ml,Personal Care,bottle,12,3.8,160.0,50.0,21,True
+SKU-P16,Active Detergent Powder 1kg,Home Care,pouch,12,12.0,90.0,25.0,21,True
+SKU-P17,Lime Dishwash Gel 500ml,Home Care,bottle,16,9.0,80.0,25.0,21,True
+SKU-P18,Citrus Surface Floor Cleaner 1L,Home Care,bottle,8,9.0,110.0,30.0,21,True
+SKU-P19,Fabric Conditioner 500ml,Home Care,bottle,12,6.5,120.0,35.0,21,True
+SKU-P20,Sparkle Glass Cleaner 500ml,Home Care,bottle,12,6.5,75.0,20.0,21,True
+SKU-P21,Premium CTC Tea 250g,Beverages,pouch,16,5.0,110.0,30.0,21,True
+SKU-P22,Classic Instant Coffee 100g,Beverages,jar,12,2.5,190.0,55.0,21,True
+SKU-P23,Fresh Milk Paneer Pack 200g,Beverages,pack,20,4.5,80.0,18.0,7,True
+SKU-P24,Malt Nutrition Health Drink 500g,Beverages,jar,12,7.0,210.0,50.0,21,True
