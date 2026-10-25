@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Database,
@@ -127,48 +127,66 @@ export function AppShell({ children, pageTitle }: AppShellProps) {
   const navItems = [
     {
       to: '/data',
-      label: 'Data',
+      label: 'Data & Network',
+      shortLabel: 'Data',
       icon: <Database className="w-4 h-4 shrink-0" strokeWidth={1.5} />,
       stateMark: counts.hasData ? (
-        <span className="inline-flex items-center text-ok text-[11px] gap-0.5" title="Data loaded">
+        <span className="inline-flex items-center text-ok text-[11px] gap-0.5" title="Data loaded and validated">
           <Check className="w-3 h-3" strokeWidth={2} />
-          <span className="hidden md:inline">Loaded</span>
+          <span className="hidden md:inline">Ready</span>
         </span>
       ) : (
-        <span className="text-meta text-ink-3">Empty</span>
+        <span className="text-meta text-ink-3">Not loaded</span>
       ),
     },
     {
       to: '/plan',
-      label: 'Plan',
+      label: 'Distribution Plan',
+      shortLabel: 'Plan',
       icon: <CalendarCheck className="w-4 h-4 shrink-0" strokeWidth={1.5} />,
       stateMark: <span className="text-meta text-ink-3">Active</span>,
     },
     {
       to: '/review',
-      label: 'Review',
+      label: 'Review & Approve',
+      shortLabel: 'Review',
       icon: <CheckSquare className="w-4 h-4 shrink-0" strokeWidth={1.5} />,
       stateMark: <span className="text-meta text-ink-3">Pending</span>,
     },
     {
       to: '/evaluate',
-      label: 'Evaluate',
+      label: 'Evaluation',
+      shortLabel: 'Evaluate',
       icon: <BarChart2 className="w-4 h-4 shrink-0" strokeWidth={1.5} />,
       stateMark: <span className="text-meta text-ink-3">Cached</span>,
     },
     {
       to: '/audit',
-      label: 'Audit',
+      label: 'Audit Trail',
+      shortLabel: 'Audit',
       icon: <FileText className="w-4 h-4 shrink-0" strokeWidth={1.5} />,
       stateMark: <span className="text-meta text-ink-3">Logged</span>,
     },
     {
       to: '/design',
-      label: 'Design system',
+      label: 'Design System',
+      shortLabel: 'Design',
       icon: <Palette className="w-4 h-4 shrink-0 text-ink-3" strokeWidth={1.5} />,
       stateMark: <span className="text-[11px] text-ink-3">Dev</span>,
     },
   ];
+
+  // Page descriptions for the header subtitle
+  const pageDescriptions: Record<string, string> = {
+    'Data and Network Validation': 'Load, validate, and fix your inventory and sales data before planning.',
+    'Distribution Plan': 'Generate optimized dispatch recommendations based on demand forecasts.',
+    'Plan Review and Approval': 'Review, approve, or reject individual dispatch recommendations.',
+    'Walk-Forward Evaluation': 'Benchmark performance against baselines with honest metrics.',
+    'Decision Log and Audit Trail': 'Permanent record of every planning decision and change.',
+    'Design System Specifications': 'Reference tokens, components, and patterns used in this application.',
+  };
+
+  const currentDescription = pageDescriptions[pageTitle] || '';
 
   return (
     <div className="min-h-screen flex flex-col bg-paper text-ink font-sans">
@@ -263,9 +281,16 @@ export function AppShell({ children, pageTitle }: AppShellProps) {
         <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
           {/* Top Bar */}
           <header className="h-16 px-8 max-[720px]:px-4 bg-surface border-b border-line flex items-center justify-between shrink-0 select-none">
-            <h1 className="font-serif text-[20px] md:text-page-title font-semibold text-ink leading-tight truncate">
-              {pageTitle}
-            </h1>
+            <div className="flex flex-col min-w-0">
+              <h1 className="font-serif text-[20px] md:text-page-title font-semibold text-ink leading-tight truncate">
+                {pageTitle}
+              </h1>
+              {currentDescription && (
+                <p className="text-meta text-ink-3 truncate hidden sm:block mt-0.5">
+                  {currentDescription}
+                </p>
+              )}
+            </div>
 
             <div className="flex items-center gap-3 sm:gap-4">
               {/* Command Palette Button */}
@@ -344,7 +369,7 @@ export function AppShell({ children, pageTitle }: AppShellProps) {
       {/* Mobile Bottom Bar (Below 720px) */}
       <nav
         aria-label="Mobile navigation"
-        className="hidden max-[720px]:flex fixed bottom-0 left-0 right-0 h-14 bg-surface border-t border-line items-center justify-around z-40 select-none"
+        className="hidden max-[720px]:flex fixed bottom-0 left-0 right-0 h-14 bg-surface border-t border-line items-center justify-around z-40 select-none safe-area-bottom"
       >
         {navItems.slice(0, 5).map((item) => (
           <NavLink
@@ -357,7 +382,7 @@ export function AppShell({ children, pageTitle }: AppShellProps) {
             }
           >
             {item.icon}
-            <span className="mt-0.5">{item.label}</span>
+            <span className="mt-0.5">{item.shortLabel}</span>
           </NavLink>
         ))}
       </nav>

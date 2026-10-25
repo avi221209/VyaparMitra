@@ -16,6 +16,108 @@
   }
 }
 
+/* Smooth scroll for anchor navigation */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Row stagger animation for plan generation */
+@keyframes fadeInRow {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Subtle card entrance */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 300ms ease-out both;
+}
+
+/* Workflow step indicator styles */
+.step-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.step-indicator::before {
+  content: '';
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--color-line-strong);
+  flex-shrink: 0;
+}
+
+.step-indicator.step-done::before {
+  background-color: var(--color-ok);
+  border-color: var(--color-ok);
+}
+
+.step-indicator.step-active::before {
+  background-color: var(--color-brand);
+  border-color: var(--color-brand);
+}
+
+.step-indicator.step-warn::before {
+  background-color: var(--color-turmeric);
+  border-color: var(--color-turmeric);
+}
+
+.step-indicator.step-error::before {
+  background-color: var(--color-madder);
+  border-color: var(--color-madder);
+}
+
+/* Page description help text */
+.page-description {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-ink-2);
+}
+
+/* Responsive table container with horizontal scroll hint */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Subtle gradient fade on right edge when table overflows */
+.table-responsive::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 24px;
+  background: linear-gradient(to right, transparent, var(--color-surface));
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 150ms;
+}
+
+.table-responsive.is-scrollable::after {
+  opacity: 1;
+}
+
 @media print {
   /* Hide non-printable navigation, header actions, and interactive elements */
   aside,

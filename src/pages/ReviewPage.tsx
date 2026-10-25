@@ -178,19 +178,30 @@ export function ReviewPage() {
     {
       key: 'status',
       header: 'Status',
-      render: (r: any) => (
-        <Badge
-          variant={
-            isApproved(r.status)
-              ? 'ok'
-              : isRejected(r.status)
-              ? 'madder'
-              : 'neutral'
-          }
-        >
-          {r.status || 'PROPOSED'}
-        </Badge>
-      ),
+      render: (r: any) => {
+        const approved = isApproved(r.status);
+        const rejected = isRejected(r.status);
+        return (
+          <div className="flex flex-col gap-1 items-start">
+            <Badge
+              variant={
+                approved
+                  ? 'ok'
+                  : rejected
+                  ? 'madder'
+                  : 'neutral'
+              }
+            >
+              {approved ? 'Approved' : rejected ? 'Rejected' : 'Pending review'}
+            </Badge>
+            {r.is_surplus_rescue && (
+              <Badge variant="brand" className="text-[10px]">
+                Surplus rescue
+              </Badge>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: 'action',
@@ -212,33 +223,63 @@ export function ReviewPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Role Notice */}
-      {!canModify && (
-        <InlineMessage severity="info">
-          Warehouse role is read-only. Switch role to Planner or Reviewer in the top bar to approve or reject lines.
-        </InlineMessage>
-      )}
+      {/* 0. GUIDANCE HEADER FOR TIER 2/3 USERS */}
+      <section className="bg-surface border border-line rounded-control p-4 flex flex-col gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-section font-serif font-semibold text-ink">
+            Dispatch Plan Review & Authorization
+          </h2>
+          <div className="flex items-center gap-2">
+            <span className="text-meta text-ink-3">Your active role:</span>
+            <Badge variant={canModify ? 'brand' : 'neutral'}>
+              {role.toUpperCase()}
+            </Badge>
+          </div>
+        </div>
+        <p className="text-body text-ink-2 max-w-[75ch]">
+          Review and approve recommended dispatches before releasing them to the godown for physical loading.
+          Approved lines can be printed as physical dispatch slips. Rejected items will remain at the origin warehouse.
+        </p>
+        {!canModify && (
+          <div className="mt-1 pt-2 border-t border-line text-meta text-ink-3 flex items-center gap-1.5">
+            <ShieldCheck className="w-4 h-4 text-turmeric shrink-0" strokeWidth={1.5} />
+            <span>Warehouse role is read-only. Switch to Planner or Reviewer in the top bar to approve or reject lines.</span>
+          </div>
+        )}
+      </section>
 
       {/* Review Metrics Header */}
       <section className="border-y border-line bg-surface py-4 px-6 select-none">
         <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-line">
           <div className="flex flex-col gap-1 pb-3 sm:pb-0 sm:pr-6">
-            <span className="text-meta font-medium text-ink-2">Pending review</span>
+            <div className="flex items-center gap-1.5">
+              <Clock className="w-4 h-4 text-ink-3" strokeWidth={1.5} />
+              <span className="text-meta font-medium text-ink-2">Pending review</span>
+            </div>
             <span className="text-section font-serif font-bold text-ink tabular-nums">
               {pendingCount} lines
             </span>
+            <span className="text-meta text-ink-3">Awaiting manager sign-off</span>
           </div>
           <div className="flex flex-col gap-1 py-3 sm:py-0 sm:px-6">
-            <span className="text-meta font-medium text-ink-2">Approved</span>
+            <div className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-ok" strokeWidth={1.5} />
+              <span className="text-meta font-medium text-ink-2">Approved</span>
+            </div>
             <span className="text-section font-serif font-bold text-ok tabular-nums">
               {approvedCount} lines
             </span>
+            <span className="text-meta text-ink-3">Ready for dispatch slips</span>
           </div>
           <div className="flex flex-col gap-1 pt-3 sm:pt-0 sm:pl-6">
-            <span className="text-meta font-medium text-ink-2">Rejected</span>
+            <div className="flex items-center gap-1.5">
+              <XCircle className="w-4 h-4 text-madder" strokeWidth={1.5} />
+              <span className="text-meta font-medium text-ink-2">Rejected</span>
+            </div>
             <span className="text-section font-serif font-bold text-madder tabular-nums">
               {rejectedCount} lines
             </span>
+            <span className="text-meta text-ink-3">Withheld at source godown</span>
           </div>
         </div>
       </section>

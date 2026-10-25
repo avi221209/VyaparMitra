@@ -286,7 +286,7 @@ export function DataPage() {
         <section className="py-3 px-4 border-y border-line bg-surface flex flex-col sm:flex-row sm:items-center justify-between gap-3 select-none">
           <div className="flex items-center gap-3">
             <span className="font-serif text-[15px] font-semibold text-ink">
-              First-run sequence
+              Getting started
             </span>
             <span className="text-line hidden sm:inline">|</span>
             <div className="flex flex-wrap items-center gap-4 text-meta text-ink-2">
@@ -332,39 +332,88 @@ export function DataPage() {
         </section>
       )}
 
-      {/* 1. ROW OF THREE BUTTONS */}
+      {/* INTRODUCTORY SECTION — What data is needed */}
+      {!hasData && (
+        <section className="bg-surface border border-line rounded-control p-5 flex flex-col gap-3">
+          <h2 className="text-section font-serif font-semibold text-ink">What data does VyaparMitra need?</h2>
+          <p className="text-body text-ink-2 max-w-[70ch]">
+            To generate accurate distribution plans, the system needs six types of data.
+            You can load sample data instantly, or import your own CSV files.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-2">
+            {[
+              { name: 'Products', desc: 'SKU catalog with case-pack sizes' },
+              { name: 'Locations', desc: 'Warehouses, depots, and stores' },
+              { name: 'Sales history', desc: 'Daily unit sales per SKU per location' },
+              { name: 'Inventory', desc: 'Current stock at each location' },
+              { name: 'Batches', desc: 'Batch IDs with expiry dates' },
+              { name: 'Lanes', desc: 'Shipping routes with freight costs' },
+            ].map((t) => (
+              <div key={t.name} className="p-3 bg-paper border border-line rounded-control">
+                <span className="text-meta font-semibold text-ink block mb-0.5">{t.name}</span>
+                <span className="text-[11px] text-ink-3 leading-snug">{t.desc}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 1. DATA LOADING SECTION */}
       <section className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            variant="primary"
-            loading={isSeeding && seedMutation.variables === 'normal'}
-            disabled={isSeeding}
+        <h2 className="text-section font-serif font-semibold text-ink">Load data</h2>
+        <p className="text-body text-ink-2">Choose a sample scenario to explore, or drag your own CSV files below.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <button
+            type="button"
             onClick={() => seedMutation.mutate('normal')}
-          >
-            Load sample data
-          </Button>
-
-          <Button
-            variant="secondary"
-            loading={isSeeding && seedMutation.variables === 'defects'}
             disabled={isSeeding}
+            className="text-left p-4 bg-surface border border-line rounded-control hover:border-brand transition-colors disabled:opacity-50 group"
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <CheckCircle2 className="w-4 h-4 text-ok" strokeWidth={1.5} />
+              <span className="text-body font-semibold text-ink group-hover:text-brand">Clean sample data</span>
+            </div>
+            <p className="text-meta text-ink-3">24 SKUs, 6 nodes, 90 days of sales. All data passes validation.</p>
+            {isSeeding && seedMutation.variables === 'normal' && (
+              <span className="text-meta text-brand mt-1 block">Loading...</span>
+            )}
+          </button>
+
+          <button
+            type="button"
             onClick={() => seedMutation.mutate('defects')}
-          >
-            Load file with errors
-          </Button>
-
-          <Button
-            variant="secondary"
-            loading={isSeeding && seedMutation.variables === 'low_w1'}
             disabled={isSeeding}
-            onClick={() => seedMutation.mutate('low_w1')}
+            className="text-left p-4 bg-surface border border-line rounded-control hover:border-turmeric transition-colors disabled:opacity-50 group"
           >
-            Load low W1 stock
-          </Button>
+            <div className="flex items-center gap-2 mb-1">
+              <AlertTriangle className="w-4 h-4 text-turmeric" strokeWidth={1.5} />
+              <span className="text-body font-semibold text-ink group-hover:text-turmeric">Data with 20 defects</span>
+            </div>
+            <p className="text-meta text-ink-3">Same dataset with intentional errors — see the validation gate in action.</p>
+            {isSeeding && seedMutation.variables === 'defects' && (
+              <span className="text-meta text-turmeric mt-1 block">Loading...</span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => seedMutation.mutate('low_w1')}
+            disabled={isSeeding}
+            className="text-left p-4 bg-surface border border-line rounded-control hover:border-madder transition-colors disabled:opacity-50 group"
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <AlertCircle className="w-4 h-4 text-madder" strokeWidth={1.5} />
+              <span className="text-body font-semibold text-ink group-hover:text-madder">Low W1 stock</span>
+            </div>
+            <p className="text-meta text-ink-3">W1 warehouse has 20% less stock — reveals shortages and rescue paths.</p>
+            {isSeeding && seedMutation.variables === 'low_w1' && (
+              <span className="text-meta text-madder mt-1 block">Loading...</span>
+            )}
+          </button>
         </div>
       </section>
 
-      {/* 2. QUIET DROP AREA FOR CSV FILES */}
+      {/* 2. CSV DROP AREA */}
       <section
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
@@ -376,15 +425,15 @@ export function DataPage() {
       >
         <UploadCloud className="w-8 h-8 text-ink-3 mb-2" strokeWidth={1.5} />
         <p className="text-body text-ink font-medium">
-          Drop CSV files here to update ledger
+          Or drop your own CSV files here
         </p>
         <p className="text-meta text-ink-3 mt-0.5 mb-3">
-          Supports sales history, inventory snapshots, and batch logs.
+          Products, locations, sales, inventory, batches, and lanes — one file per type.
         </p>
 
         {/* Template Links */}
         <div className="flex flex-wrap items-center justify-center gap-3 text-meta text-ink-2 border-t border-line pt-3 w-full max-w-2xl">
-          <span className="text-ink-3">Templates:</span>
+          <span className="text-ink-3">Download CSV templates:</span>
           <a
             href="/api/data/template/products"
             download="products_template.csv"
@@ -435,12 +484,17 @@ export function DataPage() {
         </div>
       </section>
 
-      {/* 3. VALIDATION REPORT TABLE OR EMPTY STATE */}
+      {/* 3. VALIDATION REPORT */}
       <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-section font-serif font-semibold text-ink">
-            Validation Report
-          </h2>
+          <div>
+            <h2 className="text-section font-serif font-semibold text-ink">
+              Data Validation Report
+            </h2>
+            <p className="text-meta text-ink-3 mt-0.5">
+              VyaparMitra checks for duplicate SKUs, mixed units, negative inventory, missing sales, and more.
+            </p>
+          </div>
           {issues.length > 0 && (
             <span className="text-meta text-ink-2 tabular-nums">
               {issues.length} {issues.length === 1 ? 'issue' : 'issues'} recorded
@@ -450,8 +504,9 @@ export function DataPage() {
 
         {!hasData && issues.length === 0 ? (
           <EmptyState
-            title="No data loaded"
-            description="No data loaded. Load the sample data to start."
+            title="No data loaded yet"
+            description="Load sample data or import your own CSV files above. After loading, any data defects will appear here."
+            icon={<FileSpreadsheet className="w-8 h-8" strokeWidth={1.5} />}
             action={
               <Button
                 variant="primary"

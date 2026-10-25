@@ -14,8 +14,13 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     CORS_ORIGINS: list[str] = ["*"]
     DATA_DIRECTORY: Path = DATA_DIR
+    GEMINI_API_KEY: str | None = None
 
-    model_config = SettingsConfigDict(case_sensitive=True)
+    model_config = SettingsConfigDict(
+        case_sensitive=True,
+        env_file=str(BASE_DIR / ".env"),
+        extra="ignore",
+    )
 
 
 settings = Settings()

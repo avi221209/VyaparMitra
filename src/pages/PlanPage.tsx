@@ -712,7 +712,7 @@ export function PlanPage() {
             onClick={() => generatePlanMutation.mutate()}
             icon={<CalendarCheck className="w-4 h-4" strokeWidth={1.5} />}
           >
-            Generate plan
+            Generate distribution plan
           </Button>
 
           {hasPlan && (
@@ -721,7 +721,7 @@ export function PlanPage() {
               onClick={handleDownloadCSV}
               icon={<Download className="w-4 h-4" strokeWidth={1.5} />}
             >
-              Download plan as CSV
+              Export to CSV
             </Button>
           )}
         </div>
@@ -749,7 +749,7 @@ export function PlanPage() {
             {/* Transport Cost */}
             <div className="flex flex-col gap-1 pb-4 sm:pb-0 sm:pr-6">
               <div className="flex items-center justify-between">
-                <span className="text-meta font-medium text-ink-2">Transport cost</span>
+                <span className="text-meta font-medium text-ink-2">Shipping cost (freight)</span>
                 <Popover title="Calculation of transport cost">
                   <p>
                     Transport cost is the exact sum of freight incurred across all dispatched lanes:
@@ -766,14 +766,14 @@ export function PlanPage() {
                 {formatINR(totals.transport_cost || totals.transport || 0)}
               </span>
               <span className="text-meta text-ink-3">
-                Calculated across {rawLines.length} physical dispatches
+                Total freight for {rawLines.length} dispatches
               </span>
             </div>
 
             {/* Unmet Demand */}
             <div className="flex flex-col gap-1 py-4 sm:py-0 sm:px-6">
               <div className="flex items-center justify-between">
-                <span className="text-meta font-medium text-ink-2">Unmet demand</span>
+                <span className="text-meta font-medium text-ink-2">Shortage (could not ship)</span>
                 <Popover title="Calculation of unmet demand">
                   <p>
                     Unmet demand represents customer demand over the {horizon}-day horizon that cannot be supplied:
@@ -794,14 +794,14 @@ export function PlanPage() {
                 )}
               </span>
               <span className="text-meta text-ink-3">
-                Needs exceeding eligible warehouse stock
+                Demand not fulfilled due to stock constraints
               </span>
             </div>
 
             {/* Safety-Stock Gap */}
             <div className="flex flex-col gap-1 py-4 sm:py-0 sm:px-6">
               <div className="flex items-center justify-between">
-                <span className="text-meta font-medium text-ink-2">Safety-stock gap</span>
+                <span className="text-meta font-medium text-ink-2">Safety buffer shortfall</span>
                 <Popover title="Calculation of safety-stock gap">
                   <p>
                     Safety-stock gap is the buffer deficit at destinations below the 90% service level target (z = 1.28):
@@ -822,14 +822,14 @@ export function PlanPage() {
                 )}
               </span>
               <span className="text-meta text-ink-3">
-                Buffer target gap at 90% service level
+                Buffer stock needed to maintain 90% service level
               </span>
             </div>
 
             {/* Lokad-Style Cost-to-Serve 4th Metric */}
             <div className="flex flex-col gap-1 pt-4 sm:pt-0 sm:pl-6">
               <div className="flex items-center justify-between">
-                <span className="text-meta font-medium text-ink-2">Total cost-to-serve</span>
+                <span className="text-meta font-medium text-ink-2">Full cost (freight + losses)</span>
                 <Popover title="Calculation of total economic cost-to-serve">
                   <p>
                     Lokad-style horizontal economic accounting weighing freight, lost stockout margins, and expiry write-offs:
@@ -1223,15 +1223,15 @@ export function PlanPage() {
           </div>
         ) : !hasPlan ? (
           <EmptyState
-            title="No plan yet"
-            description="No plan yet. Generate one to see what moves where."
+            title="Ready to plan"
+            description="Generate a distribution plan to see recommended dispatches. The optimizer uses your loaded data to minimize costs and shortages."
             action={
               <Button
                 variant="primary"
                 onClick={() => generatePlanMutation.mutate()}
                 icon={<CalendarCheck className="w-4 h-4" strokeWidth={1.5} />}
               >
-                Generate plan
+                Generate distribution plan
               </Button>
             }
           />
