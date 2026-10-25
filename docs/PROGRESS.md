@@ -42,3 +42,6 @@ Branch: `main`
 |---|---|---|---|
 | Phase 0: Safety, baseline, plan | Complete | `55c6179` | Baseline suite: 69 passed, 0 failed. Git origin in sync. Secrets audit clean. .env.example tracked. Plan documented. |
 | Phase 1: Backend dashboard API | Complete | `0fa3483` | All 76 backend tests passed (122s). Implemented /api/v1/dashboard/summary, /notifications, /search, and geo service. |
+| Phase 2: App shell redesign | Complete | `dc67529` | Top bar with leaf logo, debounced search, notification bell, profile chip, sample data badge, mint-tinted sidebar, 5-step guide drawer. Build passed 20/20 contrast. |
+| Phase 3: Dashboard page | Complete | `HEAD` | DashboardPage with offline Survey of India network map, 4 KPI cards, stock status table, recent plan, forecast chart, pending approvals with 8s undo toast. Full 76 backend tests & frontend build pass. |
+

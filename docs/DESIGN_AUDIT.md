@@ -131,3 +131,26 @@ The functional architecture of VyaparMitra is deterministic, verified, and compl
 | **Review Screen** | Simplify metrics into a ruled ledger band; correct sentence case; godown label formats. | Dispatch approval ledger. |
 | **Evaluate Screen** | Add 40px display serif figure; convert dot plots into quiet ledger gauge rules; sentence case section headings; eliminate middle dots. | Rigorous empirical benchmark audit. |
 | **Audit Screen** | Sentence-case filters; tabular timestamps in Indian locale format; eliminate all-caps. | Permanent chronological decision ledger. |
+
+---
+
+## 9. Intentional Differences: Mockup vs. Production Dashboard
+
+In accordance with Phase 3 instructions and the core engineering principle of **Data Honesty**, the following deliberate design decisions were implemented:
+
+1. **No Month-Over-Month % Growth or Trend Arrows**:
+   - *Mockup*: Included arbitrary "+12%", "+4%", or green percentage trend pills under KPI values.
+   - *Production*: Removed entirely. There is no multi-year historical ledger to compute month-over-month delta honestly. Rule 1 strictly forbids fabricating numbers or using `Math.random()`. Real contextual captions (e.g., `"2 warehouses • 4 retailers"`, `"across all locations"`, `"category count"`) are displayed instead.
+2. **Category Icon Tiles Instead of Product Photos**:
+   - *Mockup*: Displayed generic pharmaceutical medicine photos and blister pack thumbnails.
+   - *Production*: VyaparMitra serves Indian FMCG distribution networks (staples, beverages, packaged foods, personal care, home care). Instead of arbitrary stock photography, product cells feature crisp Lucide category icon tiles with distinct semantic colors (`Package`, `Coffee`, `ShoppingBag`, `Sparkles`, `Wheat`).
+3. **WAPE Instead of MAPE**:
+   - *Mockup*: Labeled accuracy as generic MAPE or simple accuracy.
+   - *Production*: Uses WAPE (Weighted Absolute Percentage Error, $\frac{\sum |y - \hat{y}|}{\sum y}$) and Accuracy ($100 \times (1 - \text{WAPE})$) over the last 4 weeks. MAPE causes division-by-zero errors and distorts accuracy on zero-demand days common in regional retail FMCG.
+4. **FMCG Product Names & Regional Indian Geography**:
+   - *Mockup*: Displayed placeholder medicine titles (`Amoxicillin 500mg`, `Paracetamol`).
+   - *Production*: Displays real FMCG products (`Chakki Fresh Atta 5kg`, `Refined Sunflower Oil 1L`, `Iodized Cooking Salt 1kg`, `Premium CTC Tea 250g`) flowing between regional distribution hubs (Gurgaon W1, Bhiwandi W2, Kolkata D1, Ahmedabad D2, Bengaluru S1, Pune S2).
+5. **Survey of India Compliant GeoJSON Map**:
+   - *Mockup*: World-atlas generic SVG map.
+   - *Production*: Uses official Survey of India boundary GeoJSON (`src/data/india-boundary.json`) ensuring Kashmir, Ladakh, and Arunachal Pradesh are depicted in full accordance with the Government of India standard. Fully offline rendering via `d3-geo` with zero external map tile calls.
+

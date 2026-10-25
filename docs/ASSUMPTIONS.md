@@ -116,3 +116,26 @@ As mandated by Rule 7 ("Where the spec is ambiguous, choose the simplest interpr
   - Redundant prototype CSV files (`warehouses.csv`, `destinations.csv`, `inventory_batches.csv`, `sales_history.csv`) are retired from git to eliminate schema ambiguity.
 - **Bi-directional URL Synchronization**:
   - The planning workspace (`/plan?line=...`) supports bi-directional sync: state changes update URL parameters via replace, and direct navigation/deep-linking/back-forward updates component selection without reload.
+
+## 12. Dashboard Summary API & Network Geo Mapping (Phases 1-3)
+- **Single-Call Aggregator (`/api/v1/dashboard/summary`)**:
+  - Aggregates all KPI metrics, geographic nodes, planned transport flows, stock health ratios, recent plan parameters, walk-forward forecast series, and pending dispatch approvals into a single JSON payload.
+  - Invalidation hooks clear the cached summary on any plan generation (`POST /api/v1/plan`), dispatch approval/rejection (`POST /api/v1/plan/lines/{id}/approve|reject`), and dataset upload.
+- **Stock Status Ratio & Thresholds**:
+  - `expected_demand_units`: Sum of forecasted daily demand over the planning horizon (default 14 days) across all destinations for that SKU.
+  - `total_stock_units`: Aggregate on-hand inventory across all warehouses and destinations in units (`cartons × case_pack`).
+  - `ratio`: `total_stock_units / max(expected_demand_units, 1)`.
+  - Categories:
+    - `Healthy`: $\text{ratio} \ge 1.0$ and no batch expiry conflict.
+    - `Low stock`: $0.5 \le \text{ratio} < 1.0$.
+    - `Critical`: $\text{ratio} < 0.5$, or an imminent stock shortfall exists where batch shelf-life is less than the product's `min_remaining_shelf_days`.
+- **Attention Items Count**:
+  - Defined strictly as: distinct SKUs with `Low stock` or `Critical` status + destination nodes with unmet demand ($U_{d,k} > 0$) + open critical blocking data validation issues.
+- **Static Indian Geographic Coordinates (`geo.py`)**:
+  - Maintained in `backend/app/services/geo.py` for Gurgaon (`28.4595, 77.0266`), Bhiwandi (`19.2967, 73.0631`), Kolkata (`22.5726, 88.3639`), Ahmedabad (`23.0225, 72.5714`), Bengaluru (`12.9716, 77.5946`), Pune (`18.5204, 73.8567`) plus key tier-1/tier-2 regional Indian distribution centers.
+  - Any node whose city cannot be resolved is omitted from map pins and explicitly returned in `network.unmapped`.
+- **Survey of India GeoJSON Compliance**:
+  - The map component uses `src/data/india-boundary.json`, depicting the official boundaries of India (including Jammu & Kashmir, Ladakh, and Arunachal Pradesh) as certified by the Survey of India. Fully offline rendering via `d3-geo` with zero external map tile calls.
+- **Benefit vs. Baseline**:
+  - Retrieved from `data/evaluation_cache.json` under the `balanced` scenario for `Forecast + Greedy Allocation` ($C_{\text{baseline}} - C_{\text{VyaparMitra}}$). If the walk-forward evaluation cache is missing or not yet generated, returns `null` rather than generating simulated savings.
+
