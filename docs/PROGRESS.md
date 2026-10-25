@@ -41,3 +41,4 @@ Branch: `main`
 | Phase | Status | Commit | Notes |
 |---|---|---|---|
 | Phase 0: Safety, baseline, plan | Complete | `55c6179` | Baseline suite: 69 passed, 0 failed. Git origin in sync. Secrets audit clean. .env.example tracked. Plan documented. |
+| Phase 1: Backend dashboard API | Complete | `0fa3483` | All 76 backend tests passed (122s). Implemented /api/v1/dashboard/summary, /notifications, /search, and geo service. |

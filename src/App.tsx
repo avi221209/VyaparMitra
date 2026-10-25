@@ -11,7 +11,7 @@ const ReviewPage = lazy(() => import('./pages/ReviewPage').then((m) => ({ defaul
 const EvaluatePage = lazy(() => import('./pages/EvaluatePage').then((m) => ({ default: m.EvaluatePage })));
 const AuditPage = lazy(() => import('./pages/AuditPage').then((m) => ({ default: m.AuditPage })));
 const DesignSystemPage = lazy(() => import('./pages/DesignSystemPage').then((m) => ({ default: m.DesignSystemPage })));
-const LandingPage = lazy(() => import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })));
+const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -77,9 +77,9 @@ export function App() {
             <Route
               path="/"
               element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <LandingPage />
-                </Suspense>
+                <PageWrapper title="Home">
+                  <DashboardPage />
+                </PageWrapper>
               }
             />
             <Route
