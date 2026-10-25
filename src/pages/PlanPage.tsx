@@ -32,7 +32,30 @@ import {
   Eye,
   SlidersHorizontal,
   ShieldAlert,
+  RotateCcw,
+  Sliders,
+  ShieldCheck,
 } from 'lucide-react';
+
+export interface ScenarioDelta {
+  previous: {
+    unmet_demand_cartons: number;
+    safety_stock_gap_cartons: number;
+    transport_cost: number;
+    cost_to_serve: number;
+  };
+  current: {
+    unmet_demand_cartons: number;
+    safety_stock_gap_cartons: number;
+    transport_cost: number;
+    cost_to_serve: number;
+  };
+  diff_unmet: number;
+  diff_safety_stock: number;
+  diff_transport: number;
+  diff_cost_to_serve: number;
+  scenarioName: string;
+}
 
 export function PlanPage() {
   const queryClient = useQueryClient();
@@ -88,6 +111,7 @@ export function PlanPage() {
 
   const [isOrchestrating, setIsOrchestrating] = useState<boolean>(false);
   const [rescueDrawerContext, setRescueDrawerContext] = useState<any | null>(null);
+  const [scenarioDelta, setScenarioDelta] = useState<ScenarioDelta | null>(null);
 
   // Sync state to URL and localStorage
   const updateUrlParams = useCallback(
@@ -302,6 +326,7 @@ export function PlanPage() {
   const handleWhatIfRegenerate = async (payload: any): Promise<ChangeSummary | null> => {
     const beforeTransport = planData?.totals?.transport_cost || 0;
     const beforeUnmet = planData?.totals?.unmet_demand_cartons || 0;
+    const beforeSafetyStock = planData?.totals?.safety_stock_gap_cartons || 0;
     const beforeCostToServe = planData?.totals?.total_cost || (beforeTransport + (beforeUnmet * 20.0 * 50.0));
 
     try {
@@ -316,7 +341,35 @@ export function PlanPage() {
 
       const afterTransport = newPlan?.totals?.transport_cost || 0;
       const afterUnmet = newPlan?.totals?.unmet_demand_cartons || 0;
+      const afterSafetyStock = newPlan?.totals?.safety_stock_gap_cartons || 0;
       const afterCostToServe = newPlan?.totals?.total_cost || (afterTransport + (afterUnmet * 20.0 * 50.0));
+
+      const delta: ScenarioDelta = {
+        previous: {
+          unmet_demand_cartons: beforeUnmet,
+          safety_stock_gap_cartons: beforeSafetyStock,
+          transport_cost: beforeTransport,
+          cost_to_serve: beforeCostToServe,
+        },
+        current: {
+          unmet_demand_cartons: afterUnmet,
+          safety_stock_gap_cartons: afterSafetyStock,
+          transport_cost: afterTransport,
+          cost_to_serve: afterCostToServe,
+        },
+        diff_unmet: afterUnmet - beforeUnmet,
+        diff_safety_stock: afterSafetyStock - beforeSafetyStock,
+        diff_transport: afterTransport - beforeTransport,
+        diff_cost_to_serve: afterCostToServe - beforeCostToServe,
+        scenarioName: payload.include_surplus
+          ? 'Verified Surplus Rescue'
+          : payload.source_overrides
+          ? 'Warehouse Stock Shock'
+          : payload.destination_overrides
+          ? 'Destination Demand Shift'
+          : 'What-If Scenario',
+      };
+      setScenarioDelta(delta);
 
       return {
         before: {
@@ -336,6 +389,20 @@ export function PlanPage() {
     } catch (err: any) {
       toast({ type: 'error', message: err.message || 'What-if regeneration failed' });
       return null;
+    }
+  };
+
+  const handleResetScenario = async () => {
+    try {
+      await apiFetch('/api/scenario/override', {
+        method: 'POST',
+        body: JSON.stringify({ source_overrides: {}, destination_overrides: {} }),
+      });
+      await generatePlanMutation.mutateAsync({ include_surplus: false });
+      setScenarioDelta(null);
+      toast({ type: 'info', message: 'Scenario reset to baseline' });
+    } catch (err: any) {
+      toast({ type: 'error', message: err.message || 'Reset failed' });
     }
   };
 
@@ -678,9 +745,9 @@ export function PlanPage() {
       {/* 2. SUMMARY BAND: ONE BORDERED BAND WITH THREE FIGURES */}
       {hasPlan && (
         <section className="border-y border-line bg-surface py-5 px-6 select-none">
-          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-line">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-line">
             {/* Transport Cost */}
-            <div className="flex flex-col gap-1 pb-4 md:pb-0 md:pr-6">
+            <div className="flex flex-col gap-1 pb-4 sm:pb-0 sm:pr-6">
               <div className="flex items-center justify-between">
                 <span className="text-meta font-medium text-ink-2">Transport cost</span>
                 <Popover title="Calculation of transport cost">
@@ -704,7 +771,7 @@ export function PlanPage() {
             </div>
 
             {/* Unmet Demand */}
-            <div className="flex flex-col gap-1 py-4 md:py-0 md:px-6">
+            <div className="flex flex-col gap-1 py-4 sm:py-0 sm:px-6">
               <div className="flex items-center justify-between">
                 <span className="text-meta font-medium text-ink-2">Unmet demand</span>
                 <Popover title="Calculation of unmet demand">
@@ -715,7 +782,7 @@ export function PlanPage() {
                     Unmet = Target Demand − Eligible Received Stock
                   </code>
                   <p className="text-meta text-ink-3">
-                    Excludes stock that fails lead-time or shelf-life acceptance rules.
+                    Excludes stock failing lead-time or shelf-life acceptance rules.
                   </p>
                 </Popover>
               </div>
@@ -732,7 +799,7 @@ export function PlanPage() {
             </div>
 
             {/* Safety-Stock Gap */}
-            <div className="flex flex-col gap-1 pt-4 md:pt-0 md:pl-6">
+            <div className="flex flex-col gap-1 py-4 sm:py-0 sm:px-6">
               <div className="flex items-center justify-between">
                 <span className="text-meta font-medium text-ink-2">Safety-stock gap</span>
                 <Popover title="Calculation of safety-stock gap">
@@ -756,6 +823,30 @@ export function PlanPage() {
               </span>
               <span className="text-meta text-ink-3">
                 Buffer target gap at 90% service level
+              </span>
+            </div>
+
+            {/* Lokad-Style Cost-to-Serve 4th Metric */}
+            <div className="flex flex-col gap-1 pt-4 sm:pt-0 sm:pl-6">
+              <div className="flex items-center justify-between">
+                <span className="text-meta font-medium text-ink-2">Total cost-to-serve</span>
+                <Popover title="Calculation of total economic cost-to-serve">
+                  <p>
+                    Lokad-style horizontal economic accounting weighing freight, lost stockout margins, and expiry write-offs:
+                  </p>
+                  <code className="block bg-paper p-1.5 rounded-chip text-meta text-ink font-mono font-medium">
+                    Cost = Freight + (Unmet × lost_margin) + Dead-stock risk
+                  </code>
+                  <p className="text-meta text-ink-3">
+                    Freight: {formatINR(totals.transport_cost || 0)}, Lost margin: {formatINR((totals.unmet_demand_cartons || 0) * 1000)}, Value at risk: {formatINR(deadStockWarnings.reduce((acc: number, w: any) => acc + (w.value_at_risk_inr || 0), 0))}
+                  </p>
+                </Popover>
+              </div>
+              <span className="text-page-title font-serif font-bold text-ink tabular-nums">
+                {formatINR((totals.total_cost || (totals.transport_cost || 0) + ((totals.unmet_demand_cartons || 0) * 1000)) + deadStockWarnings.reduce((acc: number, w: any) => acc + (w.value_at_risk_inr || 0), 0))}
+              </span>
+              <span className="text-meta text-ink-3">
+                Freight + lost sales + stranded risk
               </span>
             </div>
           </div>
@@ -791,6 +882,144 @@ export function PlanPage() {
             isOrchestrating={isOrchestrating}
           />
         </div>
+      )}
+
+      {/* KINAXIS-STYLE CONCURRENT SCENARIO COMPARISON DELTA BAND */}
+      {scenarioDelta && (
+        <section className="border-y border-line bg-surface p-5 flex flex-col gap-3 select-none no-print">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sliders className="w-4 h-4 text-brand" strokeWidth={1.5} />
+              <div>
+                <h3 className="text-section font-serif font-semibold text-ink">
+                  Concurrent scenario comparison ({scenarioDelta.scenarioName})
+                </h3>
+                <span className="text-meta text-ink-3">
+                  Side-by-side delta columns comparing previous baseline to active what-if run
+                </span>
+              </div>
+            </div>
+
+            <Button
+              variant="quiet"
+              size="sm"
+              onClick={handleResetScenario}
+              icon={<RotateCcw className="w-3.5 h-3.5" />}
+            >
+              Reset scenario
+            </Button>
+          </div>
+
+          <div className="w-full overflow-x-auto">
+            <table className="w-full text-left border-collapse text-body font-sans">
+              <thead>
+                <tr className="border-b border-line bg-paper/50 text-meta font-medium text-ink-2">
+                  <th className="py-2 px-3">Metric</th>
+                  <th className="py-2 px-3 text-right">Previous run</th>
+                  <th className="py-2 px-3 text-right">Current run</th>
+                  <th className="py-2 px-3 text-right">Difference in words</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line text-meta">
+                {/* 1. Unmet Demand */}
+                <tr className="hover:bg-paper/30">
+                  <td className="py-2.5 px-3 font-medium text-ink">Unmet demand</td>
+                  <td className="py-2.5 px-3 text-right tabular-nums text-ink-2">
+                    {formatCartons(scenarioDelta.previous.unmet_demand_cartons)}
+                  </td>
+                  <td className="py-2.5 px-3 text-right tabular-nums font-semibold text-ink">
+                    {formatCartons(scenarioDelta.current.unmet_demand_cartons)}
+                  </td>
+                  <td className="py-2.5 px-3 text-right font-medium">
+                    {scenarioDelta.diff_unmet > 0 ? (
+                      <span className="text-madder">
+                        {scenarioDelta.diff_unmet} more cartons unmet
+                      </span>
+                    ) : scenarioDelta.diff_unmet < 0 ? (
+                      <span className="text-ok">
+                        {Math.abs(scenarioDelta.diff_unmet)} fewer cartons unmet
+                      </span>
+                    ) : (
+                      <span className="text-ink-3">Unchanged</span>
+                    )}
+                  </td>
+                </tr>
+
+                {/* 2. Safety-Stock Gap */}
+                <tr className="hover:bg-paper/30">
+                  <td className="py-2.5 px-3 font-medium text-ink">Safety-stock gap</td>
+                  <td className="py-2.5 px-3 text-right tabular-nums text-ink-2">
+                    {formatCartons(scenarioDelta.previous.safety_stock_gap_cartons)}
+                  </td>
+                  <td className="py-2.5 px-3 text-right tabular-nums font-semibold text-ink">
+                    {formatCartons(scenarioDelta.current.safety_stock_gap_cartons)}
+                  </td>
+                  <td className="py-2.5 px-3 text-right font-medium">
+                    {scenarioDelta.diff_safety_stock > 0 ? (
+                      <span className="text-turmeric">
+                        {scenarioDelta.diff_safety_stock} extra cartons buffer gap
+                      </span>
+                    ) : scenarioDelta.diff_safety_stock < 0 ? (
+                      <span className="text-ok">
+                        {Math.abs(scenarioDelta.diff_safety_stock)} cartons buffer replenished
+                      </span>
+                    ) : (
+                      <span className="text-ink-3">Unchanged</span>
+                    )}
+                  </td>
+                </tr>
+
+                {/* 3. Freight Cost */}
+                <tr className="hover:bg-paper/30">
+                  <td className="py-2.5 px-3 font-medium text-ink">Freight cost</td>
+                  <td className="py-2.5 px-3 text-right tabular-nums text-ink-2">
+                    {formatINR(scenarioDelta.previous.transport_cost)}
+                  </td>
+                  <td className="py-2.5 px-3 text-right tabular-nums font-semibold text-ink">
+                    {formatINR(scenarioDelta.current.transport_cost)}
+                  </td>
+                  <td className="py-2.5 px-3 text-right font-medium">
+                    {scenarioDelta.diff_transport > 0 ? (
+                      <span className="text-madder">
+                        +{formatINR(scenarioDelta.diff_transport)} extra freight
+                      </span>
+                    ) : scenarioDelta.diff_transport < 0 ? (
+                      <span className="text-ok">
+                        {formatINR(Math.abs(scenarioDelta.diff_transport))} freight saved
+                      </span>
+                    ) : (
+                      <span className="text-ink-3">Unchanged</span>
+                    )}
+                  </td>
+                </tr>
+
+                {/* 4. Total Cost-to-Serve */}
+                <tr className="hover:bg-paper/30 bg-brand-wash/10 font-semibold">
+                  <td className="py-2.5 px-3 font-bold text-ink">Total cost-to-serve</td>
+                  <td className="py-2.5 px-3 text-right tabular-nums text-ink-2">
+                    {formatINR(scenarioDelta.previous.cost_to_serve)}
+                  </td>
+                  <td className="py-2.5 px-3 text-right tabular-nums font-bold text-ink">
+                    {formatINR(scenarioDelta.current.cost_to_serve)}
+                  </td>
+                  <td className="py-2.5 px-3 text-right font-bold">
+                    {scenarioDelta.diff_cost_to_serve > 0 ? (
+                      <span className="text-madder">
+                        +{formatINR(scenarioDelta.diff_cost_to_serve)} higher cost-to-serve
+                      </span>
+                    ) : scenarioDelta.diff_cost_to_serve < 0 ? (
+                      <span className="text-ok">
+                        {formatINR(Math.abs(scenarioDelta.diff_cost_to_serve))} saved in cost-to-serve
+                      </span>
+                    ) : (
+                      <span className="text-ink-3">Unchanged</span>
+                    )}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
       )}
 
       {/* 5. DISPATCH REGISTER (THE PLAN TABLE) */}

@@ -150,6 +150,41 @@ export function DispatchSlipDrawer({
     },
   });
 
+  // Keyboard shortcut listener: 'a' to Approve, 'e' to edit cartons, 'r' to reject
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (!lineId && !rescueContext) return;
+      const target = e.target as HTMLElement;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (e.key === 'a' || e.key === 'A') {
+        e.preventDefault();
+        if (canModify && !approveMutation.isPending && lineData?.status !== 'approved') {
+          approveMutation.mutate(cartons !== lineData?.cartons ? cartons : undefined);
+        }
+      } else if (e.key === 'e' || e.key === 'E') {
+        e.preventDefault();
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      } else if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        if (canModify) {
+          setShowRejectInput(true);
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lineId, rescueContext, canModify, approveMutation, lineData?.status, cartons, lineData?.cartons]);
+
   // Apply Shortfall Rescue Mutation
   const applyRescueMutation = useMutation({
     mutationFn: async () => {
@@ -225,77 +260,128 @@ export function DispatchSlipDrawer({
         subtitle={
           <div className="flex items-center gap-2 mt-0.5 text-body">
             <span className="font-medium text-ink">
-              Destination: {destName} · Shortfall: {formatCartons(unmetQty)}
+              Destination: {destName}, Shortfall: {formatCartons(unmetQty)}
             </span>
             <span className="text-line">|</span>
             <Badge variant="ok">Surplus rescue</Badge>
           </div>
         }
         footer={
-          <div className="w-full flex items-center justify-between gap-3 bg-surface pt-3 border-t border-line">
-            <div className="flex items-center gap-2">
-              <Button variant="quiet" size="sm" onClick={onClose}>
-                Close
-              </Button>
+          <div className="w-full flex flex-col gap-2 bg-surface pt-3 border-t border-line">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Button variant="quiet" size="sm" onClick={onClose}>
+                  Close
+                </Button>
+              </div>
+
+              {rescueContext && (
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-meta text-ink-2 font-medium">Rescue cartons:</span>
+                    <div className="flex items-center border border-line-strong rounded-control bg-surface overflow-hidden">
+                      <button
+                        type="button"
+                        disabled={!canModify || rescueCartons <= 0}
+                        onClick={() => setRescueCartons((c) => Math.max(0, c - 1))}
+                        aria-label="Decrease rescue cartons"
+                        className="w-8 h-8 flex items-center justify-center text-ink-2 hover:bg-paper hover:text-ink disabled:opacity-40"
+                      >
+                        <Minus className="w-3 h-3" strokeWidth={1.5} />
+                      </button>
+                      <input
+                        type="number"
+                        value={rescueCartons}
+                        max={maxRescuable}
+                        disabled={!canModify}
+                        onChange={(e) =>
+                          setRescueCartons(
+                            Math.min(maxRescuable, Math.max(0, parseInt(e.target.value) || 0))
+                          )
+                        }
+                        className="w-16 text-center font-semibold tabular-nums border-x border-line-strong h-8 bg-surface text-ink text-meta focus-visible:outline-none"
+                      />
+                      <button
+                        type="button"
+                        disabled={!canModify || rescueCartons >= maxRescuable}
+                        onClick={() => setRescueCartons((c) => Math.min(maxRescuable, c + 1))}
+                        aria-label="Increase rescue cartons"
+                        className="w-8 h-8 flex items-center justify-center text-ink-2 hover:bg-paper hover:text-ink disabled:opacity-40"
+                      >
+                        <Plus className="w-3 h-3" strokeWidth={1.5} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <Tooltip content={!canModify ? 'Warehouse role cannot apply surplus rescue' : ''}>
+                    <span>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        disabled={!canModify || !hasEligible || rescueCartons <= 0 || applyRescueMutation.isPending}
+                        loading={applyRescueMutation.isPending}
+                        onClick={() => applyRescueMutation.mutate()}
+                      >
+                        Apply rescue
+                      </Button>
+                    </span>
+                  </Tooltip>
+                </div>
+              )}
             </div>
 
-            {rescueContext && (
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-meta text-ink-2 font-medium">Rescue cartons:</span>
-                  <div className="flex items-center border border-line-strong rounded-control bg-surface overflow-hidden">
-                    <button
-                      type="button"
-                      disabled={!canModify || rescueCartons <= 0}
-                      onClick={() => setRescueCartons((c) => Math.max(0, c - 1))}
-                      aria-label="Decrease rescue cartons"
-                      className="w-8 h-8 flex items-center justify-center text-ink-2 hover:bg-paper hover:text-ink disabled:opacity-40"
-                    >
-                      <Minus className="w-3 h-3" strokeWidth={1.5} />
-                    </button>
-                    <input
-                      type="number"
-                      value={rescueCartons}
-                      max={maxRescuable}
-                      disabled={!canModify}
-                      onChange={(e) =>
-                        setRescueCartons(
-                          Math.min(maxRescuable, Math.max(0, parseInt(e.target.value) || 0))
-                        )
-                      }
-                      className="w-16 text-center font-semibold tabular-nums border-x border-line-strong h-8 bg-surface text-ink text-meta focus-visible:outline-none"
-                    />
-                    <button
-                      type="button"
-                      disabled={!canModify || rescueCartons >= maxRescuable}
-                      onClick={() => setRescueCartons((c) => Math.min(maxRescuable, c + 1))}
-                      aria-label="Increase rescue cartons"
-                      className="w-8 h-8 flex items-center justify-center text-ink-2 hover:bg-paper hover:text-ink disabled:opacity-40"
-                    >
-                      <Plus className="w-3 h-3" strokeWidth={1.5} />
-                    </button>
-                  </div>
-                </div>
-
-                <Tooltip content={!canModify ? 'Warehouse role cannot apply surplus rescue' : ''}>
-                  <span>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      disabled={!canModify || !hasEligible || rescueCartons <= 0 || applyRescueMutation.isPending}
-                      loading={applyRescueMutation.isPending}
-                      onClick={() => applyRescueMutation.mutate()}
-                    >
-                      Apply rescue
-                    </Button>
-                  </span>
-                </Tooltip>
+            {/* Keyboard shortcut hint bar */}
+            <div className="flex items-center justify-between pt-2 border-t border-line/60 text-[11px] text-ink-3">
+              <span className="font-mono">Shortcuts:</span>
+              <div className="flex items-center gap-2">
+                <span><kbd className="px-1.5 py-0.5 border border-line bg-paper rounded font-mono text-[10px]">e</kbd> Edit</span>
+                <span><kbd className="px-1.5 py-0.5 border border-line bg-paper rounded font-mono text-[10px]">Esc</kbd> Close</span>
               </div>
-            )}
+            </div>
           </div>
         }
       >
         <div className="flex flex-col gap-6">
+          {/* Top Perforated Voucher Header */}
+          <div className="pb-4 border-b-2 border-dashed border-line-strong/60 flex flex-col gap-2">
+            <div className="flex items-center justify-between text-meta">
+              <span className="font-serif font-semibold text-ink tracking-tight flex items-center gap-1.5">
+                <Truck className="w-3.5 h-3.5 text-brand" strokeWidth={1.5} />
+                Surplus rescue dispatch slip
+              </span>
+              <span className="tabular-nums font-mono text-[11px] px-1.5 py-0.5 border border-line bg-paper text-ink-2 rounded">
+                RESCUE #{bestSource?.listing_id || 'LISTING'}
+              </span>
+            </div>
+
+            <div className="p-3 border border-line bg-paper/50 rounded-control grid grid-cols-2 gap-x-4 gap-y-2 text-meta">
+              <div>
+                <span className="text-[11px] text-ink-3 block">Product</span>
+                <span className="font-medium text-ink truncate block">
+                  {prodName || 'Product'}
+                </span>
+              </div>
+              <div>
+                <span className="text-[11px] text-ink-3 block">Destination</span>
+                <span className="font-medium text-ink block">
+                  {destName || 'Depot'}
+                </span>
+              </div>
+              <div>
+                <span className="text-[11px] text-ink-3 block">Source Godown</span>
+                <span className="font-medium text-ink block">
+                  {bestSource?.source_name || bestSource?.source_id || 'Peer Godown'}
+                </span>
+              </div>
+              <div>
+                <span className="text-[11px] text-ink-3 block">Verified Spare</span>
+                <span className="tabular-nums font-medium text-ok block">
+                  {formatCartons(bestSource?.verified_spare_cartons || 0)}
+                </span>
+              </div>
+            </div>
+          </div>
+
           {violationMessage && (
             <InlineMessage severity="error">{violationMessage}</InlineMessage>
           )}
@@ -420,7 +506,7 @@ export function DispatchSlipDrawer({
               <div className="p-4 border border-line bg-paper/30 rounded-control flex flex-col gap-3">
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div className="flex flex-col items-start text-left">
-                    <span className="text-[11px] text-ink-3 uppercase font-medium">Seller Floor</span>
+                    <span className="text-[11px] text-ink-3 font-medium">Seller floor</span>
                     <span className="text-body font-semibold text-ink tabular-nums">
                       {formatINR(gains.seller_floor_per_carton, true)}
                     </span>
@@ -428,7 +514,7 @@ export function DispatchSlipDrawer({
                   </div>
 
                   <div className="flex flex-col items-center">
-                    <span className="text-[11px] text-brand uppercase font-bold">Suggested Price</span>
+                    <span className="text-[11px] text-brand font-semibold">Suggested price</span>
                     <span className="text-section font-bold text-brand tabular-nums">
                       {formatINR(gains.suggested_price_per_carton, true)}
                     </span>
@@ -436,7 +522,7 @@ export function DispatchSlipDrawer({
                   </div>
 
                   <div className="flex flex-col items-end text-right">
-                    <span className="text-[11px] text-ink-3 uppercase font-medium">Buyer Ceiling</span>
+                    <span className="text-[11px] text-ink-3 font-medium">Buyer ceiling</span>
                     <span className="text-body font-semibold text-ink tabular-nums">
                       {formatINR(gains.buyer_ceiling_per_carton, true)}
                     </span>
@@ -444,9 +530,10 @@ export function DispatchSlipDrawer({
                   </div>
                 </div>
 
-                {/* Ruled band bar */}
-                <div className="w-full h-2.5 bg-line rounded-chip relative overflow-hidden">
-                  <div className="absolute left-0 top-0 bottom-0 w-full bg-gradient-to-r from-turmeric/40 via-brand to-ok/40" />
+                {/* Ruled band bar with center trade tick */}
+                <div className="w-full h-2 bg-line rounded-chip relative overflow-hidden flex items-center">
+                  <div className="w-1/2 h-full bg-turmeric/30 border-r border-brand" />
+                  <div className="w-1/2 h-full bg-ok/30" />
                 </div>
 
                 {/* Net Gains in Rupees */}
@@ -560,7 +647,7 @@ export function DispatchSlipDrawer({
                       <div className="flex items-center justify-between font-medium text-ink">
                         <span>{sc.source_name || sc.listing_id}</span>
                         <span className="text-meta tabular-nums text-ink-2">
-                          {formatINR(sc.freight_per_carton)} / ctn · {formatDays(sc.lead_time_days)} lead time
+                          {formatINR(sc.freight_per_carton)} / ctn, {formatDays(sc.lead_time_days)} lead time
                         </span>
                       </div>
                       <p className="text-meta text-ink-2 mt-0.5 leading-relaxed">
@@ -569,7 +656,7 @@ export function DispatchSlipDrawer({
                       {isEligible && (
                         <div className="flex items-center gap-3 mt-1 text-meta text-ink font-medium">
                           <span>Spare: {formatCartons(sc.verified_spare_cartons)}</span>
-                          <span>·</span>
+                          <span className="text-line">|</span>
                           <span className="text-ok">Rescuable: {formatCartons(sc.rescuable_cartons)}</span>
                         </div>
                       )}
@@ -609,62 +696,116 @@ export function DispatchSlipDrawer({
         </div>
       }
       footer={
-        <div className="w-full flex items-center justify-between gap-3 bg-surface pt-3 border-t border-line">
-          <div className="flex items-center gap-2">
-            {!showRejectInput ? (
-              <Tooltip content={!canModify ? 'Warehouse role cannot reject' : ''}>
-                <span>
-                  <Button
-                    variant="quiet"
-                    disabled={!canModify || rejectMutation.isPending}
-                    onClick={() => setShowRejectInput(true)}
-                  >
-                    Reject
-                  </Button>
-                </span>
-              </Tooltip>
-            ) : (
-              <Button
-                variant="danger"
-                size="sm"
-                disabled={!canModify || rejectMutation.isPending}
-                loading={rejectMutation.isPending}
-                onClick={() => rejectMutation.mutate(rejectReason)}
-              >
-                Confirm rejection
-              </Button>
-            )}
+        <div className="w-full flex flex-col gap-2 bg-surface pt-3 border-t border-line">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              {!showRejectInput ? (
+                <Tooltip content={!canModify ? 'Warehouse role cannot reject' : ''}>
+                  <span>
+                    <Button
+                      variant="quiet"
+                      disabled={!canModify || rejectMutation.isPending}
+                      onClick={() => setShowRejectInput(true)}
+                    >
+                      Reject
+                    </Button>
+                  </span>
+                </Tooltip>
+              ) : (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  disabled={!canModify || rejectMutation.isPending}
+                  loading={rejectMutation.isPending}
+                  onClick={() => rejectMutation.mutate(rejectReason)}
+                >
+                  Confirm rejection
+                </Button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {cartons !== lineData?.cartons ? (
+                <Button
+                  variant="secondary"
+                  disabled={!canModify || approveMutation.isPending}
+                  loading={approveMutation.isPending}
+                  onClick={() => approveMutation.mutate(cartons)}
+                >
+                  Save cartons
+                </Button>
+              ) : (
+                <Tooltip content={!canModify ? 'Warehouse role cannot approve' : ''}>
+                  <span>
+                    <Button
+                      variant="primary"
+                      disabled={!canModify || status === 'approved' || approveMutation.isPending}
+                      loading={approveMutation.isPending}
+                      onClick={() => approveMutation.mutate()}
+                    >
+                      Approve
+                    </Button>
+                  </span>
+                </Tooltip>
+              )}
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {cartons !== lineData?.cartons ? (
-              <Button
-                variant="secondary"
-                disabled={!canModify || approveMutation.isPending}
-                loading={approveMutation.isPending}
-                onClick={() => approveMutation.mutate(cartons)}
-              >
-                Save cartons
-              </Button>
-            ) : (
-              <Tooltip content={!canModify ? 'Warehouse role cannot approve' : ''}>
-                <span>
-                  <Button
-                    variant="primary"
-                    disabled={!canModify || status === 'approved' || approveMutation.isPending}
-                    loading={approveMutation.isPending}
-                    onClick={() => approveMutation.mutate()}
-                  >
-                    Approve
-                  </Button>
-                </span>
-              </Tooltip>
-            )}
+          {/* Keyboard shortcut hint bar */}
+          <div className="flex items-center justify-between pt-2 border-t border-line/60 text-[11px] text-ink-3">
+            <span className="font-mono">Shortcuts:</span>
+            <div className="flex items-center gap-2">
+              <span><kbd className="px-1.5 py-0.5 border border-line bg-paper rounded font-mono text-[10px]">a</kbd> Approve</span>
+              <span><kbd className="px-1.5 py-0.5 border border-line bg-paper rounded font-mono text-[10px]">e</kbd> Edit</span>
+              <span><kbd className="px-1.5 py-0.5 border border-line bg-paper rounded font-mono text-[10px]">r</kbd> Reject</span>
+              <span><kbd className="px-1.5 py-0.5 border border-line bg-paper rounded font-mono text-[10px]">Esc</kbd> Close</span>
+            </div>
           </div>
         </div>
       }
     >
       <div className="flex flex-col gap-6">
+        {/* Top Perforated Voucher Header */}
+        <div className="pb-4 border-b-2 border-dashed border-line-strong/60 flex flex-col gap-2">
+          <div className="flex items-center justify-between text-meta">
+            <span className="font-serif font-semibold text-ink tracking-tight flex items-center gap-1.5">
+              <Truck className="w-3.5 h-3.5 text-brand" strokeWidth={1.5} />
+              Godown dispatch voucher & gate pass
+            </span>
+            <span className="tabular-nums font-mono text-[11px] px-1.5 py-0.5 border border-line bg-paper text-ink-2 rounded">
+              VOUCHER #{lineData?.line_id || lineId || 'DISPATCH'}
+            </span>
+          </div>
+
+          {/* Tabular Batch & Lane Ledger Box */}
+          <div className="p-3 border border-line bg-paper/50 rounded-control grid grid-cols-2 gap-x-4 gap-y-2 text-meta">
+            <div>
+              <span className="text-[11px] text-ink-3 block">Product / SKU</span>
+              <span className="font-medium text-ink truncate block">
+                {lineData?.product_name || lineData?.product_id || 'SKU Item'}
+              </span>
+            </div>
+            <div>
+              <span className="text-[11px] text-ink-3 block">Batch ID</span>
+              <span className="font-mono text-[11px] text-ink block">
+                {lineData?.batch_id || 'FEFO Batch'}
+              </span>
+            </div>
+            <div>
+              <span className="text-[11px] text-ink-3 block">Route</span>
+              <span className="font-medium text-ink block">
+                {lineData?.source_id || 'Godown'} to {lineData?.destination_id || 'Depot'}
+              </span>
+            </div>
+            <div>
+              <span className="text-[11px] text-ink-3 block">Transit & Freight</span>
+              <span className="tabular-nums text-ink block">
+                {formatDays(lineData?.lead_time_days || 2)}, {formatINR(lineData?.cost || 0)}
+              </span>
+            </div>
+          </div>
+        </div>
+
         {/* Rule Violation Alert (HTTP 409) */}
         {violationMessage && (
           <InlineMessage severity="error">{violationMessage}</InlineMessage>

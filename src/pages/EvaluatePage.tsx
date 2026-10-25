@@ -539,10 +539,21 @@ export function EvaluatePage() {
 
           {/* Seeds Won Counter */}
           <div className="p-3 bg-paper border border-line rounded-control flex items-center justify-between text-body">
-            <span className="text-meta text-ink-2 font-medium">Seeds Won vs Baseline A:</span>
+            <span className="text-meta text-ink-2 font-medium">Seeds won vs Baseline A:</span>
             <span className="font-serif text-[18px] font-bold text-brand tabular-nums">
               {vWinsCount} of 5 seeds
             </span>
+          </div>
+
+          {/* Lokad Economic Cost-to-Serve Formula Callout */}
+          <div className="p-3 bg-paper border border-line rounded-control flex flex-col gap-1.5 text-meta">
+            <div className="flex items-center justify-between font-medium text-ink">
+              <span>Rupee cost-to-serve ledger</span>
+              <span className="font-mono text-[11px] text-ink-3">Lokad arithmetic</span>
+            </div>
+            <p className="text-ink-2 text-[12px] leading-relaxed">
+              Weighs physical freight, lost customer margin on stockouts (₹1,000/carton penalty), and expired batch write-offs on the same horizontal rupee scale.
+            </p>
           </div>
         </section>
       </div>

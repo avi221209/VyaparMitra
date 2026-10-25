@@ -22,7 +22,9 @@ import {
 } from '../../lib/api';
 import { SettingsDrawer } from './SettingsDrawer';
 import { CommandPalette } from './CommandPalette';
+import { DemoGuideDrawer } from './DemoGuideDrawer';
 import { Modal, Button } from '../ui';
+import { Play } from 'lucide-react';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -36,6 +38,7 @@ export function AppShell({ children, pageTitle }: AppShellProps) {
   const [checkingHealth, setCheckingHealth] = useState<boolean>(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState<boolean>(false);
   const [settingsOpen, setSettingsOpen] = useState<boolean>(false);
+  const [demoGuideOpen, setDemoGuideOpen] = useState<boolean>(false);
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState<boolean>(false);
 
   const [counts, setCounts] = useState<{
@@ -198,14 +201,22 @@ export function AppShell({ children, pageTitle }: AppShellProps) {
           aria-label="Sidebar navigation"
           className="w-[232px] max-[1100px]:w-16 max-[720px]:hidden bg-surface border-r border-line flex flex-col shrink-0 select-none"
         >
-          {/* Rail Header with Wordmark */}
+          {/* Rail Header with Wordmark linking to / */}
           <div className="h-16 flex items-center px-6 max-[1100px]:px-0 max-[1100px]:justify-center border-b border-line">
-            <span className="font-serif text-[20px] font-bold text-ink tracking-tight max-[1100px]:hidden">
+            <NavLink
+              to="/"
+              title="Return to landing overview"
+              className="font-serif text-[20px] font-bold text-ink tracking-tight hover:text-brand transition-colors max-[1100px]:hidden"
+            >
               VyaparMitra
-            </span>
-            <span className="font-serif text-[20px] font-bold text-ink tracking-tight hidden max-[1100px]:inline">
+            </NavLink>
+            <NavLink
+              to="/"
+              title="Return to landing overview"
+              className="font-serif text-[20px] font-bold text-ink tracking-tight hover:text-brand transition-colors hidden max-[1100px]:inline"
+            >
               VM
-            </span>
+            </NavLink>
           </div>
 
           {/* Workflow Navigation */}
@@ -283,6 +294,17 @@ export function AppShell({ children, pageTitle }: AppShellProps) {
                 Simulated data
               </div>
 
+              {/* Demo Guide Button */}
+              <button
+                type="button"
+                onClick={() => setDemoGuideOpen(true)}
+                title="Open timed 3-minute pitch demo guide"
+                className="hidden md:flex items-center gap-1.5 px-2.5 py-1 text-meta font-medium text-brand bg-brand-wash/60 border border-brand/30 rounded-control hover:bg-brand-wash transition-colors"
+              >
+                <Play className="w-3.5 h-3.5 fill-brand text-brand" strokeWidth={1.5} />
+                <span>Demo guide</span>
+              </button>
+
               {/* Settings button */}
               <button
                 type="button"
@@ -342,6 +364,9 @@ export function AppShell({ children, pageTitle }: AppShellProps) {
 
       {/* Settings Drawer */}
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+      {/* Demo Guide Drawer */}
+      <DemoGuideDrawer open={demoGuideOpen} onClose={() => setDemoGuideOpen(false)} />
 
       {/* Command Palette */}
       <CommandPalette

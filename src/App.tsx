@@ -11,6 +11,7 @@ const ReviewPage = lazy(() => import('./pages/ReviewPage').then((m) => ({ defaul
 const EvaluatePage = lazy(() => import('./pages/EvaluatePage').then((m) => ({ default: m.EvaluatePage })));
 const AuditPage = lazy(() => import('./pages/AuditPage').then((m) => ({ default: m.AuditPage })));
 const DesignSystemPage = lazy(() => import('./pages/DesignSystemPage').then((m) => ({ default: m.DesignSystemPage })));
+const LandingPage = lazy(() => import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -73,7 +74,14 @@ export function App() {
       <ToastProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Navigate to="/plan" replace />} />
+            <Route
+              path="/"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <LandingPage />
+                </Suspense>
+              }
+            />
             <Route
               path="/data"
               element={
