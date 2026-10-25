@@ -3,9 +3,15 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
 
-from backend.app.db import get_session
+from backend.app.db import get_session, init_db
 from backend.app.main import app
 from backend.app.models import SettingsModel
+
+
+@pytest.fixture(scope="session", autouse=True)
+def initialize_database_schema():
+    """Ensure database schema is created on disk even if lifespan did not trigger."""
+    init_db()
 
 
 @pytest.fixture(name="session")

@@ -30,6 +30,14 @@ from backend.app.models import (
     ValidationIssue,
 )
 from backend.app.routers.dashboard import compute_stock_status, invalidate_dashboard_cache
+from backend.app.services.simulator import FMCGSimulator
+
+
+@pytest.fixture(autouse=True)
+def seed_test_database(session: Session):
+    """Seed clean balanced network into database before each test."""
+    sim = FMCGSimulator(seed=1, variant="normal", scenario="balanced")
+    sim.seed_database(session)
 
 
 # =====================================================================
@@ -102,10 +110,9 @@ def test_compute_stock_status_division_by_zero():
 # =====================================================================
 # 2. Schema Keys & Data Validation on Seeded DB
 # =====================================================================
-def test_dashboard_summary_schema_and_keys():
+def test_dashboard_summary_schema_and_keys(client: TestClient):
     """Verify that /api/v1/dashboard/summary returns the complete schema with all required fields."""
     invalidate_dashboard_cache()
-    client = TestClient(app)
     response = client.get("/api/v1/dashboard/summary")
     assert response.status_code == 200, response.text
     data = response.json()
@@ -182,16 +189,14 @@ def test_dashboard_summary_schema_and_keys():
 # =====================================================================
 # 3. Read-Only Idempotency Test (No writes happen)
 # =====================================================================
-def test_dashboard_summary_is_read_only():
+def test_dashboard_summary_is_read_only(client: TestClient, session: Session):
     """Verify that calling dashboard/summary causes 0 DB writes (row counts unchanged)."""
     invalidate_dashboard_cache()
-    client = TestClient(app)
 
-    with Session(app.state.engine if hasattr(app.state, "engine") else get_session().__next__().bind) as session:
-        count_products_before = session.exec(select(func.count(Product.id))).one()
-        count_locations_before = session.exec(select(func.count(Location.id))).one()
-        count_plans_before = session.exec(select(func.count(PlanRun.id))).one()
-        count_decisions_before = session.exec(select(func.count(DecisionLog.id))).one()
+    count_products_before = session.exec(select(func.count(Product.id))).one()
+    count_locations_before = session.exec(select(func.count(Location.id))).one()
+    count_plans_before = session.exec(select(func.count(PlanRun.id))).one()
+    count_decisions_before = session.exec(select(func.count(DecisionLog.id))).one()
 
     # Call endpoint multiple times
     res1 = client.get("/api/v1/dashboard/summary")
@@ -199,11 +204,10 @@ def test_dashboard_summary_is_read_only():
     assert res1.status_code == 200
     assert res2.status_code == 200
 
-    with Session(app.state.engine if hasattr(app.state, "engine") else get_session().__next__().bind) as session:
-        count_products_after = session.exec(select(func.count(Product.id))).one()
-        count_locations_after = session.exec(select(func.count(Location.id))).one()
-        count_plans_after = session.exec(select(func.count(PlanRun.id))).one()
-        count_decisions_after = session.exec(select(func.count(DecisionLog.id))).one()
+    count_products_after = session.exec(select(func.count(Product.id))).one()
+    count_locations_after = session.exec(select(func.count(Location.id))).one()
+    count_plans_after = session.exec(select(func.count(PlanRun.id))).one()
+    count_decisions_after = session.exec(select(func.count(DecisionLog.id))).one()
 
     assert count_products_before == count_products_after
     assert count_locations_before == count_locations_after
@@ -214,9 +218,8 @@ def test_dashboard_summary_is_read_only():
 # =====================================================================
 # 4. Notifications Count Test
 # =====================================================================
-def test_notifications_endpoint_and_count():
+def test_notifications_endpoint_and_count(client: TestClient):
     """Verify /api/v1/notifications structure and that count equals pending + attention items."""
-    client = TestClient(app)
     response = client.get("/api/v1/notifications")
     assert response.status_code == 200, response.text
     data = response.json()
@@ -230,10 +233,8 @@ def test_notifications_endpoint_and_count():
 # =====================================================================
 # 5. Search Grouped Results Test
 # =====================================================================
-def test_search_endpoint_grouped_results():
+def test_search_endpoint_grouped_results(client: TestClient):
     """Verify /api/v1/search?q= returns grouped categories (products, locations, plans, pages) capped at 8."""
-    client = TestClient(app)
-
     # General search query matching Atta
     res = client.get("/api/v1/search?q=atta")
     assert res.status_code == 200
